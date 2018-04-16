@@ -1,0 +1,25 @@
+language: go
+go:
+  - 1.10.1
+env:
+  BUILD_NUMBER=$TRAVIS_BUILD_NUMBER
+script:
+  - go get -u github.com/golang/dep/cmd/dep
+  - make dep
+  - make
+  - OS=darwin make
+before_deploy:
+  - git tag "$(make version)"
+deploy:
+  provider: releases
+  api_key:
+    secure: AaglWpoS0O0+xkEh/dF3tGRcm3ykLhpsZKHLL0ZTiepYVpu2qQJD6khtutOgDlGqUeiGs2SJ1fs7rzYFQZ8KtzJOg67pzy8VzqnAGyS5bjCz2Wmoz9wtb+GfdSkkArk4qPz/GohL181HyH/q5KaZu2iFIemcbRL/cwaN7Ja/tKtJ65en0z/5iLC5+IiGZbxfi91Ii0OrWVtoJEjuGtGtA4xuVIIETlkav0NT21KCuGrY8gXdxv7c5jQFTxtheGWOK6Eov8CtxH3bLvFF7DYR795uC9GIErnakSKWxJblQiJRWcAP1xeD4jxW1Tm4v9x+MZrkv16I/hT9s9S6cAb1Z7i+0WiKQbcIl7qyltKFbGuheAoF4jD+kKcRg/FhA3pYEOcv+eHUEq0557mn2f/BxDZvX1kSiqfXDz2fRL6nM+pqXtFum2eqkf3OwvbHhsVtD/+sZ8ek5IQdq/LilaS29aM5DJAGYxzch9tpCu+xHr7C30lou/lJdVqHQhadbARuUoA6ZH58n1My6Z+C/frL4R3LPxiHCltJ5R2iA5sg8mo+Qyr8hZax5p4kTPHabDKWjEG3rZuZjE5zFCHRO9pynC3CZ/1eGbKnpl1lkkTEYkC+6TkpkE/9ClLNOUldZvdk/NwrhwLCZdugKWSSHTQ+G8DNu5rRg+mM3NV+bNVLX48=
+  file_glob: true
+  file: build/*
+  skip_cleanup: true
+  on:
+    repo: gini/dexter
+    tags: true
+branches:
+  except:
+  - "/^[0-9]/"
