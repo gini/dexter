@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.com/gini/dexter.svg?token=hks5AUpe81U7Yryvaqjm&branch=master)](https://travis-ci.com/gini/dexter)
 
 `dexter` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google as Identity Provider.
-All you need is a properly Google client ID & secret.
+All you need is a properly configured Google client ID & secret.
 
 ## Authentication Flow
 
@@ -25,7 +25,7 @@ All you need is a properly Google client ID & secret.
 
 ## Installation
 
-You can download prebuilt version from the [Github release section](https://github.com/gini/dexter/releases) or build it yourself:
+You can download a prebuilt version from the [Github release section](https://github.com/gini/dexter/releases) or build it yourself:
 
 ```
 go get -u github.com/gini/dexter
@@ -121,7 +121,7 @@ It's awesome that you consider contributing to `dexter` and it's really simple. 
 
 ## Authors
 
-Initial code was written by [Daniel Kerwin](daniel@gini.net) & [David González Ruiz](david@gini.net)
+Initial code was written by [Daniel Kerwin](mailto:daniel@gini.net) & [David González Ruiz](mailto:david@gini.net)
 
 ## Acknowledgements
 
