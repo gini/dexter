@@ -58,11 +58,6 @@ func (d *dexterOIDC) initialize() error {
 	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
 	AuthCmd.PersistentFlags().BoolVarP(&d.dryRun, "dry-run", "d", false, "Toggle config overwrite")
 
-	// setup oauth2 object
-	if err := d.createOauth2Config(); err != nil {
-		return errors.New(fmt.Sprintf("oauth2 configuration failed: %s", err))
-	}
-
 	// create random string as CSRF protection for the oauth2 flow
 	d.state = utils.RandomString()
 
@@ -300,7 +295,6 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	return nil
 }
 
-
 var (
 	// default injected at build time. This is optional
 	defaultClientID     string
@@ -351,6 +345,17 @@ func init() {
 
 // the command to run
 func authCommand(cmd *cobra.Command, args []string) {
+	if oidcData.clientID == "" || oidcData.clientSecret == "" {
+		log.Error("clientID and clientSecret cannot be empty!")
+		return
+	}
+
+	// setup oauth2 object
+	if err := oidcData.createOauth2Config(); err != nil {
+		log.Errorf("oauth2 configuration failed: %s", err)
+		return
+	}
+
 	log.Info("Starting Google auth browser session. Please check your browser instances...")
 
 	if err := utils.OpenURL(oidcData.authUrl()); err != nil {
@@ -382,4 +387,3 @@ func authCommand(cmd *cobra.Command, args []string) {
 		}
 	}
 }
-
