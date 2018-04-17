@@ -253,7 +253,7 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	}
 
 	// write the config
-	tempKubeConfig, err := ioutil.TempFile("/tmp", "")
+	tempKubeConfig, err := ioutil.TempFile("", "")
 	defer os.Remove(tempKubeConfig.Name())
 
 	if err != nil {

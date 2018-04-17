@@ -7,8 +7,6 @@ script:
 - make dep
 - make
 - OS=darwin make
-before_deploy:
-- git tag "$(make version)"
 deploy:
   provider: releases
   api_key:
@@ -18,6 +16,7 @@ deploy:
   skip_cleanup: true
   on:
     repo: gini/dexter
+    tags: true
 branches:
   except:
   - "/^[0-9]/"

@@ -17,7 +17,7 @@ All you need is a properly configured Google client ID & secret.
 
 ## Configure Google credentials
 
-  -  Open console.developers.google.com
+  -  Open [console.developers.google.com](https://console.developers.google.com)
   -  Create new credentials
       - OAuth Client ID
       - Web Application
