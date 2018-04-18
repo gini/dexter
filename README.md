@@ -1,6 +1,6 @@
 # dexter
 
-[![Build Status](https://travis-ci.com/gini/dexter.svg?token=hks5AUpe81U7Yryvaqjm&branch=master)](https://travis-ci.com/gini/dexter)
+[![Build Status](https://travis-ci.org/gini/dexter.svg?branch=master)](https://travis-ci.org/gini/dexter)
 
 `dexter` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google as Identity Provider.
 All you need is a properly configured Google client ID & secret.
