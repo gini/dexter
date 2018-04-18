@@ -7,6 +7,7 @@ script:
 - make dep
 - make
 - OS=darwin make
+- OS=windows make
 deploy:
   provider: releases
   api_key:
