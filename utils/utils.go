@@ -1,11 +1,11 @@
 package utils
 
 import (
-	"math/rand"
-	"runtime"
-	"os/exec"
 	"errors"
 	"fmt"
+	"math/rand"
+	"os/exec"
+	"runtime"
 )
 
 // helper to generate a random string
@@ -22,6 +22,7 @@ func RandomString() string {
 // point browser to the authCode URL
 func OpenURL(url string) error {
 	var cmd string
+	var args []string
 
 	// find the right command for MacOS & Linux
 	switch os := runtime.GOOS; os {
@@ -29,10 +30,16 @@ func OpenURL(url string) error {
 		cmd = "open"
 	case "linux":
 		cmd = "xdg-open"
+	case "windows":
+		cmd = "cmd"
+		args = []string{"/c", "start"}
 	}
 
+	// append url
+	args = append(args, url)
+
 	// run command
-	err := exec.Command(cmd, url).Start()
+	err := exec.Command(cmd, args...).Start()
 
 	if err != nil {
 		return errors.New(fmt.Sprintf("command '%s' failed: %s", cmd, err))
