@@ -31,8 +31,8 @@ func OpenURL(url string) error {
 	case "linux":
 		cmd = "xdg-open"
 	case "windows":
-		cmd = "cmd"
-		args = []string{"/c", "start"}
+		cmd = "rundll32"
+		args = []string{"url.dll,FileProtocolHandler"}
 	}
 
 	// append url
