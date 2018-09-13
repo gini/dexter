@@ -1,6 +1,7 @@
 # dexter
 
-** This is a fork of <https://github.com/gini/dexter> Please refer [here](CHANGES.md) for the summary of changes. Below is the original readme, which is not nescceserily accurate for the current state of this repo**
+**This is a fork of <https://github.com/gini/dexter> Please refer [here](CHANGES.md) for the summary of changes. 
+Below is the original readme, which is not nescceserily accurate for the current state of this repo**
 
 `dexter` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google as Identity Provider.
 All you need is a properly configured Google client ID & secret.
