@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/coreos/go-oidc"
 	"github.com/ghodss/yaml"
-	"github.com/gini/dexter/utils"
+	"github.com/andrewsav-datacom/dexter/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -35,6 +35,7 @@ type dexterOIDC struct {
 	callback     string         // callback URL commandline flag
 	state        string         // CSRF protection
 	dryRun       bool           // don't update the kubectl config
+	emailFile    string         // write user's email to this file for use with other tooling
 	Oauth2Config *oauth2.Config // oauth2 configuration
 	k8sMutex     sync.RWMutex   // mutex to prevent simultaneous write to kubectl config
 	httpClient   *http.Client   // http client
@@ -42,6 +43,18 @@ type dexterOIDC struct {
 	quitChan     chan struct{}  // signal for a clean shutdown
 	signalChan   chan os.Signal // react on signals from the outside world
 }
+
+type DiscoverySpec struct {
+	AuthorizationEndpoint  string   `json:"authorization_endpoint"`
+	TokenEndpoint          string   `json:"token_endpoint"`
+	ScopesSupported        []string `json:"scopes_supported"`
+	ResponseTypesSupported []string `json:"response_types_supported"`
+	UserinfoEndpoint       string   `json:"userinfo_endpoint"`
+}
+
+var (
+	issuer string = "https://accounts.google.com"
+)
 
 // initialize the struct, parse commandline flags and install a signal handler
 func (d *dexterOIDC) initialize() error {
@@ -57,6 +70,7 @@ func (d *dexterOIDC) initialize() error {
 	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
 	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
 	AuthCmd.PersistentFlags().BoolVarP(&d.dryRun, "dry-run", "d", false, "Toggle config overwrite")
+	AuthCmd.PersistentFlags().StringVarP(&d.emailFile, "write-email", "f", "", "Write user email to the specified file for use with other tooling")
 
 	// create random string as CSRF protection for the oauth2 flow
 	d.state = utils.RandomString()
@@ -68,18 +82,26 @@ func (d *dexterOIDC) initialize() error {
 func (d *dexterOIDC) createOauth2Config() error {
 	// use build-time defaults if no clientId & clientSecret was provided
 	if d.clientID == "REDACTED" {
-		d.clientID = defaultClientID
+		if defaultClientID == "" {
+			return errors.New(fmt.Sprintf("Client ID is not specified and there was no built-in google credentials added at build time"))
+		} else {
+			d.clientID = defaultClientID
+		}
 	}
 
 	if d.clientSecret == "REDACTED" {
-		d.clientSecret = defaultClientSecret
+		if defaultClientSecret == "" {
+			return errors.New(fmt.Sprintf("Client Secret is not specified and there was no built-in google credentials added at build time"))
+		} else {
+			d.clientSecret = defaultClientSecret
+		}
 	}
 
 	// setup oidc client context
 	ctx := oidc.ClientContext(context.Background(), d.httpClient)
 
 	// initialize oidc provider
-	provider, err := oidc.NewProvider(ctx, "https://accounts.google.com")
+	provider, err := oidc.NewProvider(ctx, issuer)
 
 	if err != nil {
 		return errors.New(fmt.Sprintf("failed to create new dexterOIDC provider: %s", err))
@@ -169,7 +191,13 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 // fetch the users email address with given token
 func (d *dexterOIDC) getEmailAddress(accessToken string) (string, error) {
-	uri, _ := url.Parse("https://www.googleapis.com/oauth2/v3/userinfo")
+	ds, err := GetDiscoverySpec(issuer)
+	if err != nil {
+		log.Fatalf("Can not get Discovery Spec: %v", err)
+		return "", err		
+	}
+
+	uri, _ := url.Parse(ds.UserinfoEndpoint)
 
 	q := uri.Query()
 	q.Set("alt", "json")
@@ -212,7 +240,7 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 				"client-id":      d.clientID,
 				"client-secret":  d.clientSecret,
 				"id-token":       token.Extra("id_token").(string),
-				"idp-issuer-url": "https://accounts.google.com",
+				"idp-issuer-url": issuer,
 				"refresh-token":  token.RefreshToken,
 			},
 		},
@@ -224,6 +252,14 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("failed to get user details with access token: %s", err))
 	}
+
+	if oidcData.emailFile != "" {
+		log.Info(fmt.Sprintf("writing email to %s", oidcData.emailFile))
+		err := ioutil.WriteFile(oidcData.emailFile, []byte(email+"\n"), 0644)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Error writing email to file: %s", err))
+		}
+	}      
 
 	// contruct the config snippet
 	config := &clientCmdApi.Config{
@@ -296,10 +332,6 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 }
 
 var (
-	// default injected at build time. This is optional
-	defaultClientID     string
-	defaultClientSecret string
-
 	// initialize dexter OIDC config
 	oidcData = dexterOIDC{
 		Oauth2Config: &oauth2.Config{},
@@ -320,12 +352,12 @@ For details go to: https://blog.gini.net/
 dexters authentication flow
 ===========================
 
-1. Open a browser window/tab and redirect you to Google (https://accounts.google.com)
+1. Open a browser window/tab and redirect you to Google (`+ issuer +`)
 2. You login with your Google credentials
 3. You will be redirected to dexters builtin webserver and can now close the browser tab
 4. dexter extracts the token from the callback and patches your ~/.kube/config
 
-➜ Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
+Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
 `,
 		Run: authCommand,
 	}
@@ -386,4 +418,18 @@ func authCommand(cmd *cobra.Command, args []string) {
 		default:
 		}
 	}
+}
+
+func GetDiscoverySpec(issuer string) (DiscoverySpec, error) {
+	ds := &DiscoverySpec{}
+	resp, err := http.Get(issuer + "/.well-known/openid-configuration")
+	if err != nil {
+		return *ds, err
+	}
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(ds)
+	if err != nil {
+		return *ds, err
+	}
+	return *ds, nil
 }

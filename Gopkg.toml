@@ -34,7 +34,7 @@
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
-  version = "1.0.5"
+  version = "1.0.6"
 
 [[constraint]]
   name = "github.com/spf13/cobra"
@@ -52,6 +52,10 @@
   name = "k8s.io/client-go"
   version = "6.0.0"
 
+[[constraint]]
+  name = "github.com/mattn/go-colorable"
+  version = "1.0.0"
+ 
 [prune]
   go-tests = true
   unused-packages = true
