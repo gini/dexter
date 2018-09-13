@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/coreos/go-oidc"
 	"github.com/ghodss/yaml"
-	"github.com/gini/dexter/utils"
+	"github.com/andrewsav-datacom/dexter/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -68,11 +68,19 @@ func (d *dexterOIDC) initialize() error {
 func (d *dexterOIDC) createOauth2Config() error {
 	// use build-time defaults if no clientId & clientSecret was provided
 	if d.clientID == "REDACTED" {
-		d.clientID = defaultClientID
+		if defaultClientID == "" {
+			return errors.New(fmt.Sprintf("Client ID is not specified and the executable was compiled with no default"))
+		} else {
+			d.clientID = defaultClientID
+		}
 	}
 
 	if d.clientSecret == "REDACTED" {
-		d.clientSecret = defaultClientSecret
+		if defaultClientSecret == "" {
+			return errors.New(fmt.Sprintf("Client Secret is not specified and the executable was compiled with no default"))
+		} else {
+			d.clientSecret = defaultClientSecret
+		}
 	}
 
 	// setup oidc client context
@@ -296,10 +304,6 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 }
 
 var (
-	// default injected at build time. This is optional
-	defaultClientID     string
-	defaultClientSecret string
-
 	// initialize dexter OIDC config
 	oidcData = dexterOIDC{
 		Oauth2Config: &oauth2.Config{},

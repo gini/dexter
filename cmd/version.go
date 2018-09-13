@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"github.com/gini/dexter/version"
+	"github.com/andrewsav-datacom/dexter/version"
 )
 
 var (
@@ -12,9 +12,7 @@ var (
 		Short: "Print the version number of dexter",
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Printf(`%s
-Version    : %s
-Git Hash   : %s
-Birth Date : %s`, BANNER, version.VERSION, version.GITHASH, version.DOB)
+Version    : %s`, BANNER, version.VERSION)
 			fmt.Println()
 		},
 	}
