@@ -30,7 +30,6 @@ You can download a prebuilt version from the [Github release section](https://gi
 ```
 go get -u github.com/gini/dexter
 cd $GOPATH/src/github.com/gini/dexter
-make dep
 
 # Linux
 OS=linux make
