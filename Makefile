@@ -42,7 +42,7 @@ ARTIFACT ?= build/$(BIN)_$(OS)_$(ARCH)
 GIT_HASH = $(shell git describe --tags --always --dirty)
 
 # Base version (first to number in semver)
-BASE_VERSION ?= 0.1
+BASE_VERSION ?= 0.2
 
 # Use git tag if BUILD_NUMBER is not found in env
 BUILD_NUMBER ?= $(GIT_HASH)
@@ -68,11 +68,7 @@ CGO_ENABLED := 0
 .PHONY: version
 
 # If you want to build all binaries, see the 'all-build' rule.
-all: test build
-
-# Ensure dependencies are available
-dep:
-	@dep ensure -v
+all: vet test build
 
 # Shortcut to build assets for arch
 build-%:
