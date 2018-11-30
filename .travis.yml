@@ -2,26 +2,26 @@ language: go
 env: BUILD_NUMBER=$TRAVIS_BUILD_NUMBER
 matrix:
   include:
-    - go: 1.10.x
-      script:
-        - make vet
-        - make test
-    - go: 1.11.x
-      env: GO111MODULE=on
-      script:
-        - make vet
-        - make test
-    - go: 1.11.x
-      env:
-        - GO111MODULE=off
-      script:
-        - make
-        - OS=darwin make
-        - OS=windows make
+  - go: 1.10.x
+    script:
+    - make vet
+    - make test
+  - go: 1.11.x
+    env: GO111MODULE=on
+    script:
+    - make vet
+    - make test
+  - go: 1.11.x
+    env:
+    - GO111MODULE=off
+    script:
+    - make
+    - OS=darwin make
+    - OS=windows make
 deploy:
   provider: releases
   api_key:
-    secure: OURdioXqvsXxe5PgQATXZAqlga5EuseT9TDs4h8Tj32Hczf791nIHn5Y7kDWW9vU2pqDidb5YNStKrKF+LfBHijl69KNEh1CDXH07sbYjbWIlbfeU2sJOPPcoK9NtduPYBG/lN22u3b/cgCZZqEAOPBnsh6dJVS8vjcD0xtySShVsYETqyRbjhSxwzJ7835uObzQ+DwNrF6BPMgqC82pgumkR+ybLTIwh3+RYpEnCjbGFh8RiOBCKKLYn26m7Gn26eOOHKLlSZCYOrld4ICnmRiqxz0rZTUYC8mpOuO1UK0vd82DbFkVGCBfOBgxh1QlpSJmyDLOZPp41mKo47vhf0bMR/0Jt4JHqJwnOwKKhPuZXnddqS0SqzbdLIInZtoGJ3RhRktWiP5nzzC/PJf6EAkMNPputgCB8q9Thvyh2UrZ9GBrYslcwIHPa1L9fXxmPTYvl7KDJ+YyCI36qSgR4XKHTTvhdePBHyJI31ZHjk/793LvufuvezpBHBpmY17VOH8LWKPpx/ShtHimpkSBzTd6TRaYhSQ7p4OPFNOKuNWV8o6yvIzpLts1NYiKhkcXieyowryeC3vSMd3+6cBPF/0DcAj2wrXH4q6pEesOr07mZDE0kufIurcF08Gsj6lhDy9rmHTkaVeba0vaa7G8lCqzdp9FkF44H2EFoAw/5iI=
+    secure: Inmh1DKOrv60DJUUcyqVIDn6mcG7qcrBs46dS0KlBlqJhZsuoAgWopDrZcMLx+X7kN784yP9/42J/IMeBjMaW5bk689cctOzRUaVP+dTmf8E/XbtpAirT8qwGwtmzVr2q9WfzL8Tg69UIa8Dbe0GB5H9Ru0cEAvjTKBVfbj7LyIpvIr1YseMY8N2EOJF6+68ZV3OWPQcQqpl9FFNq/13fKfTtgniQEO4h31fB/YjUAwQIXipSw1NbywBrHl2b/DGfd07rjL8ElohVXdLSNXC8SL2rvztgI86eNNeBhVGr8Q3trd2cFd2v/dFfg0BWAoe2wWff/jnQZbc9rx/bBA1CVN9VuI3uSCd8X+tkBZV+kJz4M8HVf2jWQ8pPu4q4fRkeaiYiCAkWnGinsVtzs0QpYzwZp/ZEnVBC+VbzfVZcDkTC0tRz1kzJeC36hkyged/s3m2PC/n5dww4O2OgTnWedhEe1D+wNGgqHXvwSBRBOK/jIhSuz1NBGdjK6srxdqOunMPXz8tYO30nIMs9JGx7VUkm9fC6oAYgNxsOlF24RGZnpH7/YOip1IR2ykUQR+Vbyng60r/sOVHT9Fcfm3+/oGJ0D1CJiaYYsQehgfyOK89vk63la3YyIqt4fCimN/Z0XFgvBSTlAR0pPLPp8qL0moIOE+GpYDlKHhfl0xAyiA=
   file: build/*
   file_glob: true
   skip_cleanup: true
@@ -30,4 +30,4 @@ deploy:
     tags: true
 branches:
   except:
-    - "/^[0-9]/"
+  - "/^[0-9]/"
