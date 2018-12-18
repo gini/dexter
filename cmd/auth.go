@@ -34,6 +34,7 @@ type dexterOIDC struct {
 	clientSecret string         // clientSecret commandline flag
 	callback     string         // callback URL commandline flag
 	state        string         // CSRF protection
+	kubeConfig   string         // location of the kube config file
 	dryRun       bool           // don't update the kubectl config
 	Oauth2Config *oauth2.Config // oauth2 configuration
 	k8sMutex     sync.RWMutex   // mutex to prevent simultaneous write to kubectl config
@@ -52,10 +53,21 @@ func (d *dexterOIDC) initialize() error {
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
 
+	// get active user (to get the homedirectory)
+	usr, err := user.Current()
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to determine current user: %s", err))
+	}
+
+	// construct the path to the users .kube/config file as a default
+	kubeConfigDefaultPath := filepath.Join(usr.HomeDir, ".kube", "config")
+
 	// setup commandline flags
 	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "REDACTED", "Google clientID")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
 	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
+	AuthCmd.PersistentFlags().StringVarP(&d.kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")
 	AuthCmd.PersistentFlags().BoolVarP(&d.dryRun, "dry-run", "d", false, "Toggle config overwrite")
 
 	// create random string as CSRF protection for the oauth2 flow
@@ -150,7 +162,7 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("exchanged authCode for JWT token. Refresh token was supplied")
-	log.Info("writing credentials to ~/.kube/config")
+	log.Infof("writing credentials to %s", d.kubeConfig)
 
 	if err := d.writeK8sConfig(token); err != nil {
 		log.Errorf("Failed to write k8s config: %s", err)
@@ -263,19 +275,9 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	// write snipped to temporary file
 	clientcmd.WriteToFile(*config, tempKubeConfig.Name())
 
-	// get active user (to get the homedirectory)
-	usr, err := user.Current()
-
-	if err != nil {
-		return errors.New(fmt.Sprintf("failed to determine current user: %s", err))
-	}
-
-	// construct the path to ~/.kube/config
-	kubeConfigPath := filepath.Join(usr.HomeDir, ".kube", "config")
-
 	// setup the order for the file load
 	loadingRules := clientcmd.ClientConfigLoadingRules{
-		Precedence: []string{tempKubeConfig.Name(), kubeConfigPath},
+		Precedence: []string{tempKubeConfig.Name(), d.kubeConfig},
 	}
 
 	// merge the configs
@@ -286,7 +288,7 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	}
 
 	// write the merged data to the k8s config
-	err = clientcmd.WriteToFile(*mergedConfig, kubeConfigPath)
+	err = clientcmd.WriteToFile(*mergedConfig, d.kubeConfig)
 
 	if err != nil {
 		return errors.New(fmt.Sprintf("failed to write merged configuration: %s", err))
