@@ -39,16 +39,10 @@ OS ?= linux
 ARTIFACT ?= build/$(BIN)_$(OS)_$(ARCH)
 
 # Git hash
-GIT_HASH = $(shell git describe --tags --always --dirty)
+GIT_HASH = $(shell git rev-parse HEAD)
 
-# Base version (first to number in semver)
-BASE_VERSION ?= 0.2
-
-# Use git tag if BUILD_NUMBER is not found in env
-BUILD_NUMBER ?= $(GIT_HASH)
-
-# Set base
-VERSION := $(BASE_VERSION).${BUILD_NUMBER}
+# Set version
+VERSION := $(shell git describe --tags --always --dirty)
 
 # Set DOB (Day Of Birth)
 DOB := $(shell date +%s)
