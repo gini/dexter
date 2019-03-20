@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/coreos/go-oidc"
@@ -11,6 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/microsoft"
+	"gopkg.in/square/go-jose.v2/jwt"
 	"io/ioutil"
 	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
@@ -30,6 +32,8 @@ import (
 // dexterOIDC: struct to store the required data and provide methods to
 // authenticate with Googles OpenID implementation
 type dexterOIDC struct {
+	endpoint     string         // azure or google
+	azureTenant  string         // azure tenant
 	clientID     string         // clientID commandline flag
 	clientSecret string         // clientSecret commandline flag
 	callback     string         // callback URL commandline flag
@@ -64,6 +68,8 @@ func (d *dexterOIDC) initialize() error {
 	kubeConfigDefaultPath := filepath.Join(usr.HomeDir, ".kube", "config")
 
 	// setup commandline flags
+	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "azure", "OIDC-providers: google or azure")
+	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant (default: common)")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "REDACTED", "Google clientID")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
 	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
@@ -88,22 +94,20 @@ func (d *dexterOIDC) createOauth2Config() error {
 	}
 
 	// setup oidc client context
-	ctx := oidc.ClientContext(context.Background(), d.httpClient)
-
-	// initialize oidc provider
-	provider, err := oidc.NewProvider(ctx, "https://accounts.google.com")
-
-	if err != nil {
-		return errors.New(fmt.Sprintf("failed to create new dexterOIDC provider: %s", err))
-	}
+	oidc.ClientContext(context.Background(), d.httpClient)
 
 	// populate oauth2 config
 	d.Oauth2Config.ClientID = oidcData.clientID
 	d.Oauth2Config.ClientSecret = oidcData.clientSecret
 	d.Oauth2Config.RedirectURL = oidcData.callback
-	d.Oauth2Config.Endpoint = provider.Endpoint()
-	d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 
+	if oidcData.endpoint == "azure" {
+		d.Oauth2Config.Endpoint = microsoft.AzureADEndpoint(oidcData.azureTenant)
+		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "email"}
+	} else if oidcData.endpoint == "google" {
+		d.Oauth2Config.Endpoint = google.Endpoint
+		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
+	}
 	return nil
 }
 
@@ -179,35 +183,8 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// fetch the users email address with given token
-func (d *dexterOIDC) getEmailAddress(accessToken string) (string, error) {
-	uri, _ := url.Parse("https://www.googleapis.com/oauth2/v3/userinfo")
-
-	q := uri.Query()
-	q.Set("alt", "json")
-	q.Set("access_token", accessToken)
-
-	uri.RawQuery = q.Encode()
-
-	resp, err := d.httpClient.Get(uri.String())
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-
-	type UserInfo struct {
-		Email string `json:"email"`
-	}
-
-	ui := &UserInfo{}
-	err = json.NewDecoder(resp.Body).Decode(ui)
-
-	if err != nil {
-		return "", err
-	}
-
-	return ui.Email, nil
+type CustomClaim struct {
+	Email string `json:"email"`
 }
 
 // write the k8s config
@@ -216,6 +193,24 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	d.k8sMutex.Lock()
 	defer d.k8sMutex.Unlock()
 
+	idToken := token.Extra("id_token").(string)
+
+	parsed, err := jwt.ParseSigned(idToken)
+	if err != nil {
+		panic(err)
+	}
+
+	customClaim := &CustomClaim{}
+	claims := &jwt.Claims{}
+
+	err = parsed.UnsafeClaimsWithoutVerification(claims, customClaim)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("failed to get user details from token: %s", err))
+	}
+
+	email := customClaim.Email
+
 	// construct the authinfo struct
 	authInfo := &clientCmdApi.AuthInfo{
 		AuthProvider: &clientCmdApi.AuthProviderConfig{
@@ -223,18 +218,11 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 			Config: map[string]string{
 				"client-id":      d.clientID,
 				"client-secret":  d.clientSecret,
-				"id-token":       token.Extra("id_token").(string),
-				"idp-issuer-url": "https://accounts.google.com",
+				"id-token":       idToken,
+				"idp-issuer-url": claims.Issuer,
 				"refresh-token":  token.RefreshToken,
 			},
 		},
-	}
-
-	// fetch the email address
-	email, err := d.getEmailAddress(token.AccessToken)
-
-	if err != nil {
-		return errors.New(fmt.Sprintf("failed to get user details with access token: %s", err))
 	}
 
 	// contruct the config snippet
