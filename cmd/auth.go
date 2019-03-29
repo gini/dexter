@@ -161,6 +161,7 @@ func (d *dexterOIDC) createOauth2Config() error {
 	default:
 		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
 	}
+
 	return nil
 }
 
