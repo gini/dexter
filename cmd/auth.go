@@ -101,7 +101,16 @@ func (d *dexterOIDC) createOauth2Config() error {
 	d.Oauth2Config.ClientSecret = oidcData.clientSecret
 	d.Oauth2Config.RedirectURL = oidcData.callback
 
-	if oidcData.endpoint == "azure" {
+	switch oidcData.endpoint {
+	case "azure":
+		d.Oauth2Config.Endpoint = microsoft.AzureADEndpoint(oidcData.azureTenant)
+		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "email"}
+	case "google":
+		d.Oauth2Config.Endpoint = google.Endpoint
+		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
+	default:
+		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
+	}
 		d.Oauth2Config.Endpoint = microsoft.AzureADEndpoint(oidcData.azureTenant)
 		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "email"}
 	} else if oidcData.endpoint == "google" {
