@@ -68,7 +68,7 @@ func (d *dexterOIDC) initialize() error {
 	kubeConfigDefaultPath := filepath.Join(usr.HomeDir, ".kube", "config")
 
 	// setup commandline flags
-	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "azure", "OIDC-providers: google or azure")
+	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "google", "OIDC-providers: google or azure")
 	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant (default: common)")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "REDACTED", "Google clientID")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
