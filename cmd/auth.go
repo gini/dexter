@@ -24,6 +24,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -84,6 +85,47 @@ func (d *dexterOIDC) initialize() error {
 
 // setup and populate the OAuth2 config
 func (d *dexterOIDC) createOauth2Config() error {
+
+
+	// try to load credentials from CurrentContext
+	clientCfg,err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+
+	if(err == nil){
+
+		for i, context := range clientCfg.Contexts {
+
+			if(i == clientCfg.CurrentContext){
+				for a, authInfo := range clientCfg.AuthInfos{
+					if(a == context.AuthInfo){
+						if(authInfo.AuthProvider != nil && authInfo.AuthProvider.Name == "oidc" ){
+
+							d.clientSecret = authInfo.AuthProvider.Config["client-secret"]
+							d.clientID = authInfo.AuthProvider.Config["client-id"]
+
+							idp := authInfo.AuthProvider.Config["idp-issuer-url"];
+
+							if(strings.Contains(idp,"google")){
+								oidcData.endpoint = "google"
+
+							} else if (strings.Contains(idp,"microsoft")){
+								oidcData.endpoint = "azure"
+							}
+
+
+						}
+
+
+
+					}
+
+				}
+
+				continue;
+			}
+
+		}
+	}
+
 	// use build-time defaults if no clientId & clientSecret was provided
 	if d.clientID == "REDACTED" {
 		d.clientID = defaultClientID

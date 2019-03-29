@@ -3,6 +3,7 @@ module github.com/gini/dexter
 require (
 	cloud.google.com/go v0.37.1 // indirect
 	github.com/coreos/go-oidc v2.0.0+incompatible
+	github.com/davecgh/go-spew v1.1.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
