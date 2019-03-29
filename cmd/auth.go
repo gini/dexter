@@ -134,41 +134,37 @@ func (d *dexterOIDC) createOauth2Config() error {
 			}
 =======
 
-
 	// try to load credentials from CurrentContext
-	clientCfg,err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	clientCfg, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 
-	if(err == nil){
+	if err == nil {
 
 		for i, context := range clientCfg.Contexts {
 
-			if(i == clientCfg.CurrentContext){
-				for a, authInfo := range clientCfg.AuthInfos{
-					if(a == context.AuthInfo){
-						if(authInfo.AuthProvider != nil && authInfo.AuthProvider.Name == "oidc" ){
+			if i == clientCfg.CurrentContext {
+				for a, authInfo := range clientCfg.AuthInfos {
+					if a == context.AuthInfo {
+						if authInfo.AuthProvider != nil && authInfo.AuthProvider.Name == "oidc" {
 
 							d.clientSecret = authInfo.AuthProvider.Config["client-secret"]
 							d.clientID = authInfo.AuthProvider.Config["client-id"]
 
-							idp := authInfo.AuthProvider.Config["idp-issuer-url"];
+							idp := authInfo.AuthProvider.Config["idp-issuer-url"]
 
-							if(strings.Contains(idp,"google")){
+							if strings.Contains(idp, "google") {
 								oidcData.endpoint = "google"
 
-							} else if (strings.Contains(idp,"microsoft")){
+							} else if strings.Contains(idp, "microsoft") {
 								oidcData.endpoint = "azure"
 							}
 
-
 						}
-
-
 
 					}
 
 				}
 
-				continue;
+				continue
 			}
 
 >>>>>>> renew login based on current context
