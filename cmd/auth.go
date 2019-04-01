@@ -24,6 +24,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -85,40 +86,51 @@ func (d *dexterOIDC) initialize() error {
 
 // setup and populate the OAuth2 config
 func (d *dexterOIDC) createOauth2Config() error {
+	if d.clientID == "REDACTED" && d.clientSecret == "REDACTED" && defaultClientID == "" && defaultClientSecret == "" {
+		// try to load credentials from CurrentContext
+		clientCfg, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
 
-	// try to load credentials from CurrentContext
-	clientCfg, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+		if err == nil {
 
-	if err == nil {
+			for i, context := range clientCfg.Contexts {
 
-		for i, context := range clientCfg.Contexts {
+				if i == clientCfg.CurrentContext {
+					for a, authInfo := range clientCfg.AuthInfos {
+						if a == context.AuthInfo {
+							if authInfo.AuthProvider != nil && authInfo.AuthProvider.Name == "oidc" {
 
-			if i == clientCfg.CurrentContext {
-				for a, authInfo := range clientCfg.AuthInfos {
-					if a == context.AuthInfo {
-						if authInfo.AuthProvider != nil && authInfo.AuthProvider.Name == "oidc" {
+								d.clientSecret = authInfo.AuthProvider.Config["client-secret"]
+								d.clientID = authInfo.AuthProvider.Config["client-id"]
 
-							d.clientSecret = authInfo.AuthProvider.Config["client-secret"]
-							d.clientID = authInfo.AuthProvider.Config["client-id"]
+								idp := authInfo.AuthProvider.Config["idp-issuer-url"]
 
-							idp := authInfo.AuthProvider.Config["idp-issuer-url"]
+								if strings.Contains(idp, "google") {
+									oidcData.endpoint = "google"
 
-							if strings.Contains(idp, "google") {
-								oidcData.endpoint = "google"
+								} else if strings.Contains(idp, "microsoft") {
+									oidcData.endpoint = "azure"
+									re, err := regexp.Compile(`(?P<tenant>[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12})`) //uuid is tenant
+									if err == nil {
+										res := re.FindAllStringSubmatch(idp, -1)
+										if len(res) > 0 {
+											oidcData.azureTenant = res[0][0] // found tenant
 
-							} else if strings.Contains(idp, "microsoft") {
-								oidcData.endpoint = "azure"
+										}
+
+									}
+
+								}
+
 							}
 
 						}
 
 					}
 
+					continue
 				}
 
-				continue
 			}
-
 		}
 	}
 
