@@ -102,6 +102,7 @@ Flags:
   -i, --client-id string       Google clientID (default "REDACTED")
   -s, --client-secret string   Google clientSecret (default "REDACTED")
   -d, --dry-run                Toggle config overwrite
+  -k, --kube-config            Define the Kubeconfig to edit
   -h, --help                   help for auth
 
 Global Flags:
