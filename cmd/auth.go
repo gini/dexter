@@ -69,7 +69,7 @@ func (d *dexterOIDC) initialize() error {
 
 	// setup commandline flags
 	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "google", "OIDC-providers: google or azure")
-	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant (default: common)")
+	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "REDACTED", "Google clientID")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
 	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
@@ -200,7 +200,7 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 
 	parsed, err := jwt.ParseSigned(idToken)
 	if err != nil {
-		panic(err)
+		return errors.New(fmt.Sprintf("Failed to parse token: %s", err))
 	}
 
 	customClaim := &CustomClaim{}
