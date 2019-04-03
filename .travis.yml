@@ -8,17 +8,11 @@ matrix:
     - make vet
     - make test
   - go: 1.12.x
-    env: GO111MODULE=on
     script:
     - make vet
     - make test
-  - go: 1.12.x
-    env:
-    - GO111MODULE=off
-    script:
-    - make
-    - OS=darwin make
-    - OS=windows make
+    - OS=darwin make build
+    - OS=windows make build
 deploy:
   provider: releases
   api_key:
