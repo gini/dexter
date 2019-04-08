@@ -174,18 +174,23 @@ func (d *dexterOIDC) autoConfigureOauth2Config() error {
 
 						} else if strings.Contains(idp, "microsoft") {
 							oidcData.endpoint = "azure"
-							// TODO: tenant variable is not used. useless in regex
-							re, err := regexp.Compile(`(?P<tenant>[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12})`) //uuid is tenant
+
+
+							re, err := regexp.Compile(`[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}`) //find uuid, this is tenant
 
 							if err != nil {
-								return errors.New(fmt.Sprintf("failed to extract the azure tenant from the issuer URL: %s", err))
+								// failed to extract the azure tenant, use default "common
+								oidcData.azureTenant = "common"
+								return nil
+
 							}
 
 							res := re.FindStringSubmatch(idp)
 							if len(res) == 1 {
 								oidcData.azureTenant = res[0] // found tenant
 							} else {
-								return errors.New(fmt.Sprintf("failed to identify tenant ID. Found %d matches", len(res)))
+								// failed to find tenant, use common
+								oidcData.azureTenant = "common"
 							}
 						}
 
@@ -434,7 +439,7 @@ func authCommand(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	log.Info("Starting Google auth browser session. Please check your browser instances...")
+	log.Info("Starting auth browser session. Please check your browser instances...")
 
 	if err := utils.OpenURL(oidcData.authUrl()); err != nil {
 		log.Errorf("Failed to open browser session: %s", err)
