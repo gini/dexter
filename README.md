@@ -2,12 +2,12 @@
 
 [![Build Status](https://travis-ci.org/gini/dexter.svg?branch=master)](https://travis-ci.org/gini/dexter)
 
-`dexter` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google as Identity Provider.
-All you need is a properly configured Google client ID & secret.
+`dexter` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google or Azure as Identity Provider.
+All you need is a properly configured Google or Azure client ID & secret.
 
 ## Authentication Flow
 
-`dexter` will open a new browser window and redirect you to Google. The only interaction you have is the login at Google and your k8s config is updated automatically.
+`dexter` will open a new browser window and redirect you to your configured Idp. The only interaction you have is the login at your provider and your k8s config is updated automatically.
 
 ![dexter flow](/assets/dexter_flow.png?raw=true "dexter flow")
 
@@ -15,13 +15,25 @@ All you need is a properly configured Google client ID & secret.
 
 ![dexter in action](/assets/dexter.gif?raw=true "dexter in action")
 
-## Configure Google credentials
+## Configuration
+###Google credentials
 
   -  Open [console.developers.google.com](https://console.developers.google.com)
   -  Create new credentials
       - OAuth Client ID
       - Web Application
       - Authorized redirect URIs: http://127.0.0.1:64464/callback
+
+### Or, configure Azure credentials
+
+  -  Open [portal.azure.com](https://portal.azure.com)
+  -  Go to App registrations and create a new app
+      - Enter reply URI http://127.0.0.1:64464/callback
+      - Create secret key
+      - Collect application ID (client ID)
+
+### Auto pilot configuration
+Dexter also support auto pilot mode. If your existing kubectl context uses one of the supported OIDC-providers, Dexter will try to use the OIDC details from kubeconfig.
 
 ## Installation
 
