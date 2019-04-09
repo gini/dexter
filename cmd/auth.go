@@ -24,6 +24,8 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -84,13 +86,20 @@ func (d *dexterOIDC) initialize() error {
 
 // setup and populate the OAuth2 config
 func (d *dexterOIDC) createOauth2Config() error {
-	// use build-time defaults if no clientId & clientSecret was provided
-	if d.clientID == "REDACTED" {
-		d.clientID = defaultClientID
-	}
-
-	if d.clientSecret == "REDACTED" {
-		d.clientSecret = defaultClientSecret
+	// no commandline client credentials supplied
+	if d.clientID == "REDACTED" && d.clientSecret == "REDACTED" {
+		// no builtin defaults - let's try auto-configuration
+		if defaultClientID == "" && defaultClientSecret == "" {
+			log.Info("Autopilot mode - no credentials set")
+			if err := d.autoConfigureOauth2Config(); err != nil {
+				return errors.New(fmt.Sprintf("failed to extract oidc configuration from the kube config: %s", err))
+			}
+		} else if defaultClientID != "" && defaultClientSecret != "" {
+			// use build-time defaults if no clientId & clientSecret was provided
+			log.Info("Using builtin credentials - no credentials set")
+			d.clientID = defaultClientID
+			d.clientSecret = defaultClientSecret
+		}
 	}
 
 	// setup oidc client context
@@ -111,7 +120,88 @@ func (d *dexterOIDC) createOauth2Config() error {
 	default:
 		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
 	}
+
 	return nil
+}
+
+// populate the Oauth2Config object from the kube config. Return an error when the operation failed
+func (d *dexterOIDC) autoConfigureOauth2Config() error {
+	// initialize the clientConfig and error variables
+	var clientCfg *clientCmdApi.Config
+	var err error
+
+	// try to load the credentials from the kubeconfig specified on the commandline
+	if d.kubeConfig != "" {
+		clientCfg, err = clientcmd.LoadFromFile(d.kubeConfig)
+
+		if err != nil {
+			return errors.New(fmt.Sprintf("failed to load kubeconfig from %s: %s", d.kubeConfig, err))
+		}
+	} else {
+		// try to load credentials from CurrentContext
+		clientCfg, err = clientcmd.NewDefaultClientConfigLoadingRules().Load()
+
+		if err != nil {
+			return errors.New(fmt.Sprintf("failed to load kubeconfig from the default locations: %s", err))
+		}
+	}
+
+	// loop through all the contexts until we find the current context
+	for contextName, context := range clientCfg.Contexts {
+		// find the context definition that matches the current active context
+		if contextName == clientCfg.CurrentContext {
+			// loop through the global authentication definitions
+			for authName, authInfo := range clientCfg.AuthInfos {
+				// find the authentication definition that is in use in the current context
+				if authName == context.AuthInfo {
+					// ensure it is oidc based
+					if authInfo.AuthProvider != nil && authInfo.AuthProvider.Name == "oidc" {
+						// verify that relevant keys exist
+						for _, key := range []string{"client-id", "client-secret", "idp-issuer-url"} {
+							if _, ok := authInfo.AuthProvider.Config[key]; !ok {
+								return errors.New(fmt.Sprintf("%s is missing in kubeconfig: %s", key, err))
+							}
+						}
+
+						// set client credentials and idp url based on the kubeconfig definition
+						d.clientSecret = authInfo.AuthProvider.Config["client-secret"]
+						d.clientID = authInfo.AuthProvider.Config["client-id"]
+						idp := authInfo.AuthProvider.Config["idp-issuer-url"]
+
+						// set endpoint based on a match on the issuer URL
+						if strings.Contains(idp, "google") {
+							oidcData.endpoint = "google"
+
+						} else if strings.Contains(idp, "microsoft") {
+							oidcData.endpoint = "azure"
+
+
+							re, err := regexp.Compile(`[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}`) //find uuid, this is tenant
+
+							if err != nil {
+								// failed to extract the azure tenant, use default "common
+								oidcData.azureTenant = "common"
+								return nil
+
+							}
+
+							res := re.FindStringSubmatch(idp)
+							if len(res) == 1 {
+								oidcData.azureTenant = res[0] // found tenant
+							} else {
+								// failed to find tenant, use common
+								oidcData.azureTenant = "common"
+							}
+						}
+
+						return nil
+					}
+				}
+			}
+		}
+	}
+
+	return errors.New("failed to auto-configure OIDC from kubeconfig")
 }
 
 func (d *dexterOIDC) authUrl() string {
@@ -349,7 +439,7 @@ func authCommand(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	log.Info("Starting Google auth browser session. Please check your browser instances...")
+	log.Info("Starting auth browser session. Please check your browser instances...")
 
 	if err := utils.OpenURL(oidcData.authUrl()); err != nil {
 		log.Errorf("Failed to open browser session: %s", err)
