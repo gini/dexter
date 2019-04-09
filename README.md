@@ -16,7 +16,7 @@ All you need is a properly configured Google or Azure client ID & secret.
 ![dexter in action](/assets/dexter.gif?raw=true "dexter in action")
 
 ## Configuration
-###Google credentials
+### Google credentials
 
   -  Open [console.developers.google.com](https://console.developers.google.com)
   -  Create new credentials
@@ -114,8 +114,10 @@ Flags:
   -i, --client-id string       Google clientID (default "REDACTED")
   -s, --client-secret string   Google clientSecret (default "REDACTED")
   -d, --dry-run                Toggle config overwrite
-  -k, --kube-config            Define the Kubeconfig to edit
+  -e, --endpoint string        OIDC-providers: google or azure (default "google")
   -h, --help                   help for auth
+  -k, --kube-config string     Overwrite the default location of kube config (~/.kube/config) (default "/Users/dkerwin/.kube/config")
+  -t, --tenant string          Your azure tenant (default "common")
 
 Global Flags:
   -v, --verbose   verbose output
