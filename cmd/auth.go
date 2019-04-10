@@ -4,20 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/coreos/go-oidc"
-	"github.com/ghodss/yaml"
-	"github.com/gini/dexter/utils"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"golang.org/x/oauth2/microsoft"
-	"gopkg.in/square/go-jose.v2/jwt"
 	"io/ioutil"
-	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/clientcmd"
-	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
-	clientCmdLatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,25 +16,44 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/coreos/go-oidc"
+	"github.com/ghodss/yaml"
+	"github.com/gini/dexter/utils"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/microsoft"
+	"gopkg.in/square/go-jose.v2/jwt"
+	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
+	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
+	clientCmdLatest "k8s.io/client-go/tools/clientcmd/api/latest"
 )
 
 // dexterOIDC: struct to store the required data and provide methods to
 // authenticate with Googles OpenID implementation
 type dexterOIDC struct {
-	endpoint     string         // azure or google
-	azureTenant  string         // azure tenant
-	clientID     string         // clientID commandline flag
-	clientSecret string         // clientSecret commandline flag
-	callback     string         // callback URL commandline flag
-	state        string         // CSRF protection
-	kubeConfig   string         // location of the kube config file
-	dryRun       bool           // don't update the kubectl config
-	Oauth2Config *oauth2.Config // oauth2 configuration
-	k8sMutex     sync.RWMutex   // mutex to prevent simultaneous write to kubectl config
-	httpClient   *http.Client   // http client
-	httpServer   http.Server    // http server
-	quitChan     chan struct{}  // signal for a clean shutdown
-	signalChan   chan os.Signal // react on signals from the outside world
+	endpoint        string            // azure or google
+	azureTenant     string            // azure tenant
+	authName        string            // authinfo name within kubeconfig
+	clientID        string            // clientID commandline flag
+	clientSecret    string            // clientSecret commandline flag
+	callback        string            // callback URL commandline flag
+	state           string            // CSRF protection
+	kubeConfig      string            // location of the kube config file
+	scopes          []string          // Additional scopes to request
+	authCodeOptions map[string]string // Authorization code options
+	certificateFile string            // SSL certificate file
+	keyFile         string            // SSL private key file
+	dryRun          bool              // don't update the kubectl config
+	Oauth2Config    *oauth2.Config    // oauth2 configuration
+	k8sMutex        sync.RWMutex      // mutex to prevent simultaneous write to kubectl config
+	httpClient      *http.Client      // http client
+	httpServer      http.Server       // http server
+	quitChan        chan struct{}     // signal for a clean shutdown
+	signalChan      chan os.Signal    // react on signals from the outside world
 }
 
 // initialize the struct, parse commandline flags and install a signal handler
@@ -70,12 +76,16 @@ func (d *dexterOIDC) initialize() error {
 	kubeConfigDefaultPath := filepath.Join(usr.HomeDir, ".kube", "config")
 
 	// setup commandline flags
-	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "google", "OIDC-providers: google or azure")
+	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "google", "OIDC-providers: \"google\", \"azure\" or issuer URL")
 	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "REDACTED", "Google clientID")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
-	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
+	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is derived from that.")
 	AuthCmd.PersistentFlags().StringVarP(&d.kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")
+	AuthCmd.PersistentFlags().StringArrayVar(&d.scopes, "scopes", []string{}, "Additional scopes to include in request")
+	AuthCmd.PersistentFlags().StringToStringVar(&d.authCodeOptions, "auth-code-options", map[string]string{}, "Authorization code options")
+	AuthCmd.PersistentFlags().StringVar(&d.certificateFile, "certificate", "", "SSL certificate for web server")
+	AuthCmd.PersistentFlags().StringVar(&d.keyFile, "private-key", "", "SSL private key for web server")
 	AuthCmd.PersistentFlags().BoolVarP(&d.dryRun, "dry-run", "d", false, "Toggle config overwrite")
 
 	// create random string as CSRF protection for the oauth2 flow
@@ -103,7 +113,7 @@ func (d *dexterOIDC) createOauth2Config() error {
 	}
 
 	// setup oidc client context
-	oidc.ClientContext(context.Background(), d.httpClient)
+	ctx := oidc.ClientContext(context.Background(), d.httpClient)
 
 	// populate oauth2 config
 	d.Oauth2Config.ClientID = oidcData.clientID
@@ -118,8 +128,24 @@ func (d *dexterOIDC) createOauth2Config() error {
 		d.Oauth2Config.Endpoint = google.Endpoint
 		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 	default:
-		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
+		// Attempt to use endpoint as generic issuer if it is a valid URL
+		_, err := url.Parse(oidcData.endpoint)
+		if err != nil {
+			return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
+		}
+
+		// Attempt to gather endpoint information via discovery
+		genericProvider, err := oidc.NewProvider(ctx, oidcData.endpoint)
+		if err != nil {
+			return err
+		}
+
+		d.Oauth2Config.Endpoint = genericProvider.Endpoint()
+		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 	}
+
+	// Append additional specified scopes
+	d.Oauth2Config.Scopes = append(d.Oauth2Config.Scopes, d.scopes...)
 
 	return nil
 }
@@ -156,6 +182,8 @@ func (d *dexterOIDC) autoConfigureOauth2Config() error {
 				if authName == context.AuthInfo {
 					// ensure it is oidc based
 					if authInfo.AuthProvider != nil && authInfo.AuthProvider.Name == "oidc" {
+						d.authName = authName
+
 						// verify that relevant keys exist
 						for _, key := range []string{"client-id", "client-secret", "idp-issuer-url"} {
 							if _, ok := authInfo.AuthProvider.Config[key]; !ok {
@@ -175,7 +203,6 @@ func (d *dexterOIDC) autoConfigureOauth2Config() error {
 						} else if strings.Contains(idp, "microsoft") {
 							oidcData.endpoint = "azure"
 
-
 							re, err := regexp.Compile(`[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}`) //find uuid, this is tenant
 
 							if err != nil {
@@ -192,6 +219,8 @@ func (d *dexterOIDC) autoConfigureOauth2Config() error {
 								// failed to find tenant, use common
 								oidcData.azureTenant = "common"
 							}
+						} else {
+							oidcData.endpoint = idp
 						}
 
 						return nil
@@ -205,7 +234,17 @@ func (d *dexterOIDC) autoConfigureOauth2Config() error {
 }
 
 func (d *dexterOIDC) authUrl() string {
-	return d.Oauth2Config.AuthCodeURL(d.state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"))
+	// Use provided authorization code options
+	options := []oauth2.AuthCodeOption{
+		oauth2.AccessTypeOffline,
+		oauth2.SetAuthURLParam("prompt", "consent"),
+	}
+
+	for optionKey, optionValue := range d.authCodeOptions {
+		options = append(options, oauth2.SetAuthURLParam(optionKey, optionValue))
+	}
+
+	return d.Oauth2Config.AuthCodeURL(d.state, options...)
 }
 
 // start HTTP server to receive callbacks. This has to be run in a go routine
@@ -221,7 +260,23 @@ func (d *dexterOIDC) startHttpServer() {
 	d.httpServer.Addr = parsedURL.Host
 
 	http.HandleFunc("/callback", d.callbackHandler)
-	d.httpServer.ListenAndServe()
+
+	// Determine if HTTP server should use SSL
+	if parsedURL.Scheme == "http" {
+		d.httpServer.ListenAndServe()
+	} else {
+		if !strings.Contains(d.httpServer.Addr, ":") {
+			d.httpServer.Addr = fmt.Sprintf("%s:443", d.httpServer.Addr)
+		}
+
+		err = d.httpServer.ListenAndServeTLS(d.certificateFile, d.keyFile)
+		if err != nil {
+			if err != http.ErrServerClosed {
+				log.Errorf("Failed to start web server: %s", err)
+				d.quitChan <- struct{}{}
+			}
+		}
+	}
 }
 
 // accept callbacks from your browser
@@ -302,7 +357,11 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 		return errors.New(fmt.Sprintf("failed to get user details from token: %s", err))
 	}
 
-	email := customClaim.Email
+	// Use e-mail claim if configuration wasn't discovered in kubeconfig
+	authName := customClaim.Email
+	if d.authName != "" {
+		authName = d.authName
+	}
 
 	// construct the authinfo struct
 	authInfo := &clientCmdApi.AuthInfo{
@@ -320,7 +379,7 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 
 	// contruct the config snippet
 	config := &clientCmdApi.Config{
-		AuthInfos: map[string]*clientCmdApi.AuthInfo{email: authInfo},
+		AuthInfos: map[string]*clientCmdApi.AuthInfo{authName: authInfo},
 	}
 
 	// write the rendered config snipped when dry-run is enabled
