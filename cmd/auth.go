@@ -120,8 +120,13 @@ func (d *dexterOIDC) createOauth2Config() error {
 		d.Oauth2Config.Endpoint = google.Endpoint
 		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 	case "okta":
-		d.Oauth2Config.Endpoint = okta.Endpoint
-		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "profile email groups"}
+		val := os.Getenv("OKTA_SUBDOMAIN")
+		if len(val) == 0 {
+			return errors.New(fmt.Sprintf("Okta endpoint error: envar OKTA_SUBDOMAIN must be set."))
+		} else {
+			d.Oauth2Config.Endpoint = okta.Endpoint
+			d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "profile", "email", "groups"}
+		}
 	default:
 		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
 	}
