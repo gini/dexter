@@ -19,4 +19,12 @@
 // The repo-root-based run commandline  is:
 //          `./build/dexter_darwin_amd64 -e okta auth -d -c http://127.0.0.1:5533/callback`
 //
+
+// for kubernetes RBAC authentication, the kube-apiserver manifest should include these lines in the containers/command/kube-apiserver stanza:
+//  - --oidc-issuer-url=https://OKTA_SUBDOMAIN.okta.com
+//  - --oidc-client-id=OKTA_OIDC_CLIENT_ID
+//  - --oidc-username-claim=email # if desired
+//  - --oidc-groups-claim=groups  # if desired
+// with the envar names replaced appropriately.
+
 package okta // import "golang.org/x/oauth2/okta"
