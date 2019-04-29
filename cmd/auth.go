@@ -4,20 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/coreos/go-oidc"
-	"github.com/ghodss/yaml"
-	"github.com/gini/dexter/utils"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"golang.org/x/oauth2/microsoft"
-	"gopkg.in/square/go-jose.v2/jwt"
 	"io/ioutil"
-	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/clientcmd"
-	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
-	clientCmdLatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,12 +16,27 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/coreos/go-oidc"
+	"github.com/ghodss/yaml"
+	"github.com/gini/dexter/utils"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/microsoft"
+	"golang.org/x/oauth2/okta"
+	"gopkg.in/square/go-jose.v2/jwt"
+	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
+	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
+	clientCmdLatest "k8s.io/client-go/tools/clientcmd/api/latest"
 )
 
 // dexterOIDC: struct to store the required data and provide methods to
-// authenticate with Googles OpenID implementation
+// authenticate with Okta OpenID implementation
 type dexterOIDC struct {
-	endpoint     string         // azure or google
+	endpoint     string         // azure or google or okta
 	azureTenant  string         // azure tenant
 	clientID     string         // clientID commandline flag
 	clientSecret string         // clientSecret commandline flag
@@ -70,10 +72,10 @@ func (d *dexterOIDC) initialize() error {
 	kubeConfigDefaultPath := filepath.Join(usr.HomeDir, ".kube", "config")
 
 	// setup commandline flags
-	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "google", "OIDC-providers: google or azure")
+	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "google", "OIDC-providers: google or azure or okta")
 	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant")
-	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "REDACTED", "Google clientID")
-	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
+	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "REDACTED", "Google  or Okta clientID")
+	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "REDACTED", "Google or Okta clientSecret")
 	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
 	AuthCmd.PersistentFlags().StringVarP(&d.kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")
 	AuthCmd.PersistentFlags().BoolVarP(&d.dryRun, "dry-run", "d", false, "Toggle config overwrite")
@@ -117,6 +119,9 @@ func (d *dexterOIDC) createOauth2Config() error {
 	case "google":
 		d.Oauth2Config.Endpoint = google.Endpoint
 		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
+	case "okta":
+		d.Oauth2Config.Endpoint = okta.Endpoint
+		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "profile email groups"}
 	default:
 		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
 	}
@@ -175,6 +180,8 @@ func (d *dexterOIDC) autoConfigureOauth2Config() error {
 						} else if strings.Contains(idp, "microsoft") {
 							oidcData.endpoint = "azure"
 
+						} else if strings.Contains(idp, "okta") {
+							oidcData.endpoint = "okta"
 
 							re, err := regexp.Compile(`[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}`) //find uuid, this is tenant
 
@@ -395,7 +402,7 @@ var (
 	AuthCmd = &cobra.Command{
 		Use:   "auth",
 		Short: "Authenticate with OIDC provider",
-		Long: `Use your Google login to get a JWT (JSON Web Token) and update your
+		Long: `Use your Google or Okta login to get a JWT (JSON Web Token) and update your
 local k8s config accordingly. A refresh token is added and automatically refreshed 
 by kubectl. Existing token configurations are overwritten.
 For details go to: https://blog.gini.net/
@@ -403,12 +410,12 @@ For details go to: https://blog.gini.net/
 dexters authentication flow
 ===========================
 
-1. Open a browser window/tab and redirect you to Google (https://accounts.google.com)
-2. You login with your Google credentials
+1. Open a browser window/tab and redirect you to Google (https://accounts.google.com) or Okta (your Okta endpoint)
+2. You login with your Google or Okta credentials
 3. You will be redirected to dexters builtin webserver and can now close the browser tab
 4. dexter extracts the token from the callback and patches your ~/.kube/config
 
-➜ Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
+➜ For google: unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
 `,
 		Run: authCommand,
 	}
@@ -440,6 +447,7 @@ func authCommand(cmd *cobra.Command, args []string) {
 	}
 
 	log.Info("Starting auth browser session. Please check your browser instances...")
+	log.Info("\n\n=====> oidcData: %v+", oidcData)
 
 	if err := utils.OpenURL(oidcData.authUrl()); err != nil {
 		log.Errorf("Failed to open browser session: %s", err)

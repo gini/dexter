@@ -50,6 +50,7 @@ golang.org/x/net/idna
 golang.org/x/oauth2
 golang.org/x/oauth2/google
 golang.org/x/oauth2/microsoft
+golang.org/x/oauth2/okta
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
