@@ -13,6 +13,9 @@
 // dexter leverages the embedded client id and secret in auth#initialize, sat here as envars OKTA_OIDC_CLIENT_ID and OKTA_OIDC_CLIENT_SECRET;
 // if absent, it attempts config from the current kubectl context in kubeconfig.
 
+// In order to ascertain the corrrect Okta endpoint, dexter relies upon the OKTA_SUBDOMAIN envar:
+// e.g., if the endpoint is foobar.okta.com, `export OKTA_SUBDOMAIN=foobar` (or prefox the run command accordingly).
+
 // The repo-root-based run commandline  is:
 //          `./build/dexter_darwin_amd64 -e okta auth -d -c http://127.0.0.1:5533/callback`
 //
