@@ -2,3 +2,4 @@ build/
 .idea/
 google.clientid google.clientsecret
 tags
+bin/kubeauth

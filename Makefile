@@ -88,6 +88,9 @@ bin/$(ARCH)/$(BIN):
 	    -X $(PKG)/cmd.defaultClientID=$(CLIENT_ID) \
 	    -X $(PKG)/cmd.defaultClientSecret=$(CLIENT_SECRET)"
 
+kubeauth:
+	cp -pv build/dexter_darwin_amd64 bin/kubeauth
+
 # Run go vet on repo
 vet:
 	@echo "vet package $(PKG)"

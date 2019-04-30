@@ -72,11 +72,11 @@ func (d *dexterOIDC) initialize() error {
 	kubeConfigDefaultPath := filepath.Join(usr.HomeDir, ".kube", "config")
 
 	// setup commandline flags
-	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "google", "OIDC-providers: google or azure or okta")
+	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "okta", "OIDC-providers: google or azure or okta")
 	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", string(os.Getenv("OKTA_OIDC_CLIENT_ID")), "Google  or Okta clientID")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", string(os.Getenv("OKTA_OIDC_CLIENT_SECRET")), "Google or Okta clientSecret")
-	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
+	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:5533/callback", "Callback URL. The listen address is derived from that.")
 	AuthCmd.PersistentFlags().StringVarP(&d.kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")
 	AuthCmd.PersistentFlags().BoolVarP(&d.dryRun, "dry-run", "d", false, "Toggle config overwrite")
 

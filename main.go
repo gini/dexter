@@ -1,8 +1,8 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
 	"github.com/gini/dexter/cmd"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
