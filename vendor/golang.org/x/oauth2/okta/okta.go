@@ -5,13 +5,12 @@
 package okta // import "golang.org/x/oauth2/okta"
 
 import (
-	"os"
 	"strings"
 
 	"golang.org/x/oauth2"
 )
 
 var Endpoint = oauth2.Endpoint{
-	AuthURL:  strings.Join([]string{"https://", os.Getenv("OKTA_SUBDOMAIN"), ".okta.com/oauth2/v1/authorize"}, ""),
-	TokenURL: strings.Join([]string{"https://", os.Getenv("OKTA_SUBDOMAIN"), ".okta.com/oauth2/v1/token"}, ""),
+	AuthURL:  strings.Join([]string{"OKTA_OIDC_ENDPOINT", "/v1/authorize"}, ""),
+	TokenURL: strings.Join([]string{"OKTA_OIDC_ENDPOINT", "/v1/token"}, ""),
 }

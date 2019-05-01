@@ -72,11 +72,12 @@ func (d *dexterOIDC) initialize() error {
 	kubeConfigDefaultPath := filepath.Join(usr.HomeDir, ".kube", "config")
 
 	// setup commandline flags
+	// NOTE: these OKTA vars depend on the Makefile embedding rules
 	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "okta", "OIDC-providers: google or azure or okta")
 	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant")
-	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", string(os.Getenv("OKTA_OIDC_CLIENT_ID")), "Google  or Okta clientID")
-	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", string(os.Getenv("OKTA_OIDC_CLIENT_SECRET")), "Google or Okta clientSecret")
-	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:5533/callback", "Callback URL. The listen address is derived from that.")
+	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "iOKTA_OIDC_CLIENT_ID", "Google  or Okta clientID")
+	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "OKTA_OIDC_CLIENT_SECRET", "Google or Okta clientSecret")
+	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "OKTA_OIDC_CALLBACK", "Callback URL. The listen address is derived from that.")
 	AuthCmd.PersistentFlags().StringVarP(&d.kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")
 	AuthCmd.PersistentFlags().BoolVarP(&d.dryRun, "dry-run", "d", false, "Toggle config overwrite")
 
@@ -120,13 +121,8 @@ func (d *dexterOIDC) createOauth2Config() error {
 		d.Oauth2Config.Endpoint = google.Endpoint
 		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 	case "okta":
-		val := os.Getenv("OKTA_SUBDOMAIN")
-		if len(val) == 0 {
-			return errors.New(fmt.Sprintf("Okta endpoint error: envar OKTA_SUBDOMAIN must be set."))
-		} else {
-			d.Oauth2Config.Endpoint = okta.Endpoint
-			d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "profile", "email", "groups"}
-		}
+		d.Oauth2Config.Endpoint = okta.Endpoint
+		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "profile", "email", "groups"}
 	default:
 		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
 	}
@@ -231,14 +227,12 @@ func (d *dexterOIDC) startHttpServer() {
 	}
 
 	d.httpServer.Addr = parsedURL.Host
-
 	http.HandleFunc("/callback", d.callbackHandler)
 	d.httpServer.ListenAndServe()
 }
 
 // accept callbacks from your browser
 func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info("callback received")
 
 	// Get code and state from the passed form value
 	code := r.FormValue("code")
@@ -262,6 +256,7 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	// create context and exchange authCode for token
 	ctx := oidc.ClientContext(r.Context(), d.httpClient)
+
 	token, err := oidcData.Oauth2Config.Exchange(ctx, code)
 
 	if err != nil {
@@ -271,7 +266,6 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("exchanged authCode for JWT token. Refresh token was supplied")
-	log.Infof("writing credentials to %s", d.kubeConfig)
 
 	if err := d.writeK8sConfig(token); err != nil {
 		log.Errorf("Failed to write k8s config: %s", err)
@@ -452,7 +446,6 @@ func authCommand(cmd *cobra.Command, args []string) {
 	}
 
 	log.Info("Starting auth browser session. Please check your browser instances...")
-	log.Info("\n\n=====> oidcData: %v+", oidcData)
 
 	if err := utils.OpenURL(oidcData.authUrl()); err != nil {
 		log.Errorf("Failed to open browser session: %s", err)

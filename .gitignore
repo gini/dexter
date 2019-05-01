@@ -3,3 +3,6 @@ build/
 google.clientid google.clientsecret
 tags
 bin/kubeauth
+cmd/auth.go-e
+tmp/
+vendor/golang.org/x/oauth2/okta/okta.go-e

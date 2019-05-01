@@ -55,6 +55,8 @@ IMAGE := $(REGISTRY)/$(BIN)-$(ARCH)
 
 CGO_ENABLED := 0
 
+SHELL := /bin/bash
+
 ##-------------------------------------------------
 ## Rules
 ##-------------------------------------------------
@@ -88,8 +90,34 @@ bin/$(ARCH)/$(BIN):
 	    -X $(PKG)/cmd.defaultClientID=$(CLIENT_ID) \
 	    -X $(PKG)/cmd.defaultClientSecret=$(CLIENT_SECRET)"
 
-kubeauth:
-	cp -pv build/dexter_darwin_amd64 bin/kubeauth
+
+kubeauth: embed build kubeauth_complete  # NOTE: run make with -k to ensure unembedding of files, e.g. `make -k kubeauth`. Otherwise you run the risk of commiting creds into the repo.
+
+# embed the creds into the executable, but keep them out of the repo.
+embed:
+	if [ ! -d tmp ]; then \
+  	mkdir tmp; \
+		echo tmp >> .gitignore; \
+  fi; 
+	cp -pv vendor/golang.org/x/oauth2/okta/okta.go tmp; 
+	cp -pv cmd/auth.go tmp; 
+	sed -i -e 's,OKTA_OIDC_ENDPOINT,$(OKTA_OIDC_ENDPOINT),g' ./vendor/golang.org/x/oauth2/okta/okta.go; 
+	sed -i -e 's,OKTA_OIDC_CLIENT_ID,$(OKTA_OIDC_CLIENT_ID),g' cmd/auth.go; 
+	sed -i -e 's,OKTA_OIDC_CLIENT_SECRET,$(OKTA_OIDC_CLIENT_SECRET),g' cmd/auth.go 
+	sed -i -e 's,OKTA_OIDC_CALLBACK,$(OKTA_OIDC_CALLBACK),g' cmd/auth.go 
+
+unembed:
+	echo "unembedding kubeauth vars..." &&  cp -pv tmp/okta.go vendor/golang.org/x/oauth2/okta/okta.go && cp -pv tmp/auth.go cmd/auth.go; 
+kubeauth_complete: 
+	case "$$?" in  \
+	0)  \
+		echo "Installing kubeauth ..." && cp -pv build/dexter_darwin_amd64 bin/kubeauth; \
+		echo "unembedding kubeauth vars..." &&  cp -pv tmp/okta.go vendor/golang.org/x/oauth2/okta/okta.go && cp -pv tmp/auth.go cmd/auth.go; \
+		;; \
+	*)  \
+		echo "unembedding kubeauth vars..." &&  cp -pv tmp/okta.go vendor/golang.org/x/oauth2/okta/okta.go && cp -pv tmp/auth.go cmd/auth.go; \
+		;; \
+	esac
 
 # Run go vet on repo
 vet:
