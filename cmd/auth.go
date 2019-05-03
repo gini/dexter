@@ -75,7 +75,7 @@ func (d *dexterOIDC) initialize() error {
 	// NOTE: these OKTA vars depend on the Makefile embedding rules
 	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "okta", "OIDC-providers: google or azure or okta")
 	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant")
-	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "iOKTA_OIDC_CLIENT_ID", "Google  or Okta clientID")
+	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "OKTA_OIDC_CLIENT_ID", "Google  or Okta clientID")
 	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "OKTA_OIDC_CLIENT_SECRET", "Google or Okta clientSecret")
 	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "OKTA_OIDC_CALLBACK", "Callback URL. The listen address is derived from that.")
 	AuthCmd.PersistentFlags().StringVarP(&d.kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")

@@ -1,0 +1,8 @@
+#!/bin/sh
+#
+NUM=`grep -R OKTA_OIDC cmd/auth.go vendor/golang.org/x/oauth2/okta/okta.go | wc -l`
+if [ $NUM -ne "5" ]; then
+  echo "Unexpected number of embedded markers - make sure you are not commiting creds!"
+  exit 1
+fi
+

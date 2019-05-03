@@ -31,5 +31,7 @@
 //   --oidc-username-prefix=okta:
 //   --oidc-groups-claim=groups
 //   --oidc-groups-prefix=okta:
-
+//
+// NOTE: There's a pre-commit hook to guard against uninitentional commits of embedded creds. To enable, `cp pre-commit-hook .git/hooks`
+//
 package okta // import "golang.org/x/oauth2/okta"

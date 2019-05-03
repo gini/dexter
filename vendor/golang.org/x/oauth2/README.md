@@ -6,7 +6,6 @@
 oauth2 package contains a client implementation for OAuth 2.0 spec.
 
 ## Installation
-
 ~~~~
 go get golang.org/x/oauth2
 ~~~~
@@ -33,3 +32,4 @@ this repository, see https://golang.org/doc/contribute.html.
 
 The main issue tracker for the oauth2 repository is located at
 https://github.com/golang/oauth2/issues.
+
