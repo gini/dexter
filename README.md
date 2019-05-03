@@ -1,6 +1,7 @@
 # Intro
 This fork is adding okta fat id_token support, particularly for groups.
-This enables RBAC rolebindings based on groups.
+This (theoretically) enables RBAC rolebindings based on groups.
+
 # dexter
 
 [![Build Status](https://travis-ci.org/gini/dexter.svg?branch=master)](https://travis-ci.org/gini/dexter)
