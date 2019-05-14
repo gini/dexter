@@ -40,6 +40,9 @@
 //  oidcClientID: [okta oidc app client_id]
 //  oidcUsernameClaim: preferred_username
 //  oidcGroupClaim: groups
+//  oidcUsernamePrefix: [okta application server url] // default
+//  runtimeConfig:
+//    rbac.authorization.k8s.io/v1alpha1: "true"
 
 // NOTE: There's a pre-commit hook to guard against uninitentional commits of embedded creds. To enable, `cp pre-commit-hook .git/hooks`
 //
