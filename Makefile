@@ -33,7 +33,7 @@ ARCH ?= amd64
 ALL_ARCH := amd64
 
 # Which OS to build
-OS ?= linux
+OS ?= darwin
 
 # Artefact to create
 ARTIFACT ?= build/$(BIN)_$(OS)_$(ARCH)

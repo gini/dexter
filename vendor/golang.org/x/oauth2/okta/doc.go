@@ -21,17 +21,26 @@
 // The Makefile creates cmd/kubeauth, and creats and uses ./tmp for temporary storage of the non-embedded source files
 // usage:
 //		bin/kubeauth auth [dexter options]
-//
 
 // In addition to the Okta docs cited above, see the exellent setup docs for jetstack/okta-kubectl-auth: https://github.com/jetstack/okta-kubectl-auth/blob/master/docs/okta-setup.md
-// i.e., in the kube-apiserver manifest, add:
+// i.e., in the kube-apiserver manifest, modify the authentication directive to:
+//   --authorization-mode=Node,RBAC
+// and add:
+
+// if directly, e.g. minikube:
 //   --oidc-issuer-url=[okta application server url]
 //   --oidc-client-id=[okta oidc app client_id]
 //   --oidc-username-claim=preferred_username
-//   --oidc-username-prefix=okta:
 //   --oidc-groups-claim=groups
-//   --oidc-groups-prefix=okta:
-//
+
+// if kops:
+// kubeAPIServer:
+//  authorizationRbacSuperUser: admin
+//  oidcIssuerURL: [okta application server url]
+//  oidcClientID: [okta oidc app client_id]
+//  oidcUsernameClaim: preferred_username
+//  oidcGroupClaim: groups
+
 // NOTE: There's a pre-commit hook to guard against uninitentional commits of embedded creds. To enable, `cp pre-commit-hook .git/hooks`
 //
 package okta // import "golang.org/x/oauth2/okta"

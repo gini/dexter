@@ -122,7 +122,7 @@ func (d *dexterOIDC) createOauth2Config() error {
 		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 	case "okta":
 		d.Oauth2Config.Endpoint = okta.Endpoint
-		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "profile", "email", "groups"}
+		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "profile", "email", "email_verified", "groups"}
 	default:
 		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
 	}
@@ -329,6 +329,7 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 		AuthInfos: map[string]*clientCmdApi.AuthInfo{email: authInfo},
 	}
 
+	log.Infof("\n\n====> config: \n====> %v\n\n", config)
 	// write the rendered config snipped when dry-run is enabled
 	if oidcData.dryRun {
 		// create a JSON representation
