@@ -101,10 +101,10 @@ embed:
   fi; 
 	cp -pv vendor/golang.org/x/oauth2/okta/okta.go tmp; 
 	cp -pv cmd/auth.go tmp; 
-	sed -i -e 's,OKTA_OIDC_ENDPOINT,$(OKTA_OIDC_ENDPOINT),g' ./vendor/golang.org/x/oauth2/okta/okta.go; 
-	sed -i -e 's,OKTA_OIDC_CLIENT_ID,$(OKTA_OIDC_CLIENT_ID),g' cmd/auth.go; 
-	sed -i -e 's,OKTA_OIDC_CLIENT_SECRET,$(OKTA_OIDC_CLIENT_SECRET),g' cmd/auth.go 
-	sed -i -e 's,OKTA_OIDC_CALLBACK,$(OKTA_OIDC_CALLBACK),g' cmd/auth.go 
+	sed -i -e 's,OIDC_ENDPOINT,$(OIDC_ENDPOINT),g' ./vendor/golang.org/x/oauth2/okta/okta.go; 
+	sed -i -e 's,OIDC_CLIENT_ID,$(OIDC_CLIENT_ID),g' cmd/auth.go; 
+	sed -i -e 's,OIDC_CLIENT_SECRET,$(OIDC_CLIENT_SECRET),g' cmd/auth.go 
+	sed -i -e 's,OIDC_CALLBACK,$(OIDC_CALLBACK),g' cmd/auth.go 
 
 unembed:
 	echo "unembedding kubeauth vars..." &&  cp -pv tmp/okta.go vendor/golang.org/x/oauth2/okta/okta.go && cp -pv tmp/auth.go cmd/auth.go; 

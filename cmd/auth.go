@@ -72,12 +72,12 @@ func (d *dexterOIDC) initialize() error {
 	kubeConfigDefaultPath := filepath.Join(usr.HomeDir, ".kube", "config")
 
 	// setup commandline flags
-	// NOTE: these OKTA vars depend on the Makefile embedding rules
+	// NOTE: these OIDC vars depend on the Makefile embedding rules
 	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "okta", "OIDC-providers: google or azure or okta")
 	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant")
-	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "OKTA_OIDC_CLIENT_ID", "Google  or Okta clientID")
-	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "OKTA_OIDC_CLIENT_SECRET", "Google or Okta clientSecret")
-	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "OKTA_OIDC_CALLBACK", "Callback URL. The listen address is derived from that.")
+	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "OIDC_CLIENT_ID", "Google  or Okta clientID")
+	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "OIDC_CLIENT_SECRET", "Google or Okta clientSecret")
+	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "OIDC_CALLBACK", "Callback URL. The listen address is derived from that.")
 	AuthCmd.PersistentFlags().StringVarP(&d.kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")
 	AuthCmd.PersistentFlags().BoolVarP(&d.dryRun, "dry-run", "d", false, "Toggle config overwrite")
 
@@ -328,8 +328,6 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	config := &clientCmdApi.Config{
 		AuthInfos: map[string]*clientCmdApi.AuthInfo{email: authInfo},
 	}
-
-	log.Infof("\n\n====> config: \n====> %v\n\n", config)
 	// write the rendered config snipped when dry-run is enabled
 	if oidcData.dryRun {
 		// create a JSON representation
@@ -382,6 +380,7 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 		return errors.New(fmt.Sprintf("failed to write merged configuration: %s", err))
 	}
 
+	log.Infof("====> Authenticated as %s <====", email)
 	return nil
 }
 

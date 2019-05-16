@@ -13,10 +13,10 @@
 //
 // The Makefile embeds credentials from environment variables so that the executable con be distributed without reliance on the user's envir.
 // These must be set:
-//		OKTA_OIDC_CLIENT_ID
-//		OKTA_OIDC_CLIENT_SECRET
-//		OKTA_OIDC_CALLBACK
-//		OKTA_OIDC_ENDPOINT
+//		OIDC_CLIENT_ID
+//		OIDC_CLIENT_SECRET
+//		OIDC_CALLBACK
+//		OIDC_ENDPOINT
 
 // The Makefile creates cmd/kubeauth, and creats and uses ./tmp for temporary storage of the non-embedded source files
 // usage:
@@ -40,10 +40,10 @@
 //  oidcClientID: [okta oidc app client_id]
 //  oidcUsernameClaim: preferred_username
 //  oidcGroupClaim: groups
-//  oidcUsernamePrefix: [okta application server url] // default
+//  oidcUsernamePrefix: [okta application server url] // this is the default behavior
 //  runtimeConfig:
 //    rbac.authorization.k8s.io/v1alpha1: "true"
 
-// NOTE: There's a pre-commit hook to guard against uninitentional commits of embedded creds. To enable, `cp pre-commit-hook .git/hooks`
+// NOTE: There's a pre-commit hook to guard against uninitentional commits of embedded creds. To enable, `cp pre-commit-hook .git/hooks/pre-commit`
 //
 package okta // import "golang.org/x/oauth2/okta"
