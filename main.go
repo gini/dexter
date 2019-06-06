@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gini/dexter/cmd"
+	"github.com/davidr-asapp/dexter-kubeauth/cmd"
 	log "github.com/sirupsen/logrus"
 )
 

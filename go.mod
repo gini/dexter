@@ -1,4 +1,4 @@
-module github.com/gini/dexter
+module github.com/davidr-asapp/dexter-kubeauth
 
 require (
 	cloud.google.com/go v0.37.1 // indirect

@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -13,6 +14,12 @@ const (
 / /_/ \  ___/ >    <  |  | \  ___/|  | \/
 \____ |\___  >__/\_ \ |__|  \___  >__|   
      \/    \/      \/           \/       
+| |  / /
+| | / /
+|  \ \ UBEAUTH
+| | \ \
+| |  \ \
+
 `
 )
 

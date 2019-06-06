@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
+
+	"github.com/davidr-asapp/dexter-kubeauth/version"
 	"github.com/spf13/cobra"
-	"github.com/gini/dexter/version"
 )
 
 var (

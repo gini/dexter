@@ -22,7 +22,7 @@
 BIN := dexter
 
 # This repo's root import path (under GOPATH).
-PKG := github.com/gini/dexter
+PKG := github.com/davidr-asapp/dexter-kubeauth
 
 # Where to push the docker image.
 REGISTRY ?=

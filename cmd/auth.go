@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc"
+	"github.com/davidr-asapp/dexter-kubeauth/utils"
 	"github.com/ghodss/yaml"
-	"github.com/gini/dexter/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -252,7 +252,7 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("authCode and state verification passed. Fetching JWT")
+	// log.Info("authCode and state verification passed. Fetching JWT")
 
 	// create context and exchange authCode for token
 	ctx := oidc.ClientContext(r.Context(), d.httpClient)
@@ -265,7 +265,7 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("exchanged authCode for JWT token. Refresh token was supplied")
+	// log.Info("exchanged authCode for JWT token. Refresh token was supplied")
 
 	if err := d.writeK8sConfig(token); err != nil {
 		log.Errorf("Failed to write k8s config: %s", err)
@@ -452,7 +452,7 @@ func authCommand(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	log.Infof("Spawning http server to receive callbacks (%s)", oidcData.callback)
+	//	log.Infof("Spawning http server to receive callbacks (%s)", oidcData.callback)
 
 	// spawn HTTP server
 	go oidcData.startHttpServer()
@@ -466,7 +466,6 @@ func authCommand(cmd *cobra.Command, args []string) {
 			ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 
 			oidcData.httpServer.Shutdown(ctx)
-			log.Infof("Shutdown completed")
 			os.Exit(0)
 		// OS signal was received
 		case sig := <-oidcData.signalChan:

@@ -2,22 +2,16 @@
 This fork is adding okta fat id_token support, particularly for groups.
 This (theoretically) enables RBAC rolebindings based on groups.
 
-# dexter
+# kubeauth
 
-[![Build Status](https://travis-ci.org/gini/dexter.svg?branch=master)](https://travis-ci.org/gini/dexter)
 
-`dexter` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google or Azure as Identity Provider.
+`kubeauth` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google or Azure as Identity Provider.
 All you need is a properly configured Google or Azure client ID & secret.
 
 ## Authentication Flow
 
-`dexter` will open a new browser window and redirect you to your configured Idp. The only interaction you have is the login at your provider and your k8s config is updated automatically.
+`kubeauth` will open a new browser window and redirect you to your configured Idp. The only interaction you have is the login at your provider and your k8s config is updated automatically.
 
-![dexter flow](/assets/dexter_flow.png?raw=true "dexter flow")
-
-## See dexter in action
-
-![dexter in action](/assets/dexter.gif?raw=true "dexter in action")
 
 ## Configuration
 ### Google credentials
@@ -37,15 +31,13 @@ All you need is a properly configured Google or Azure client ID & secret.
       - Collect application ID (client ID)
 
 ### Auto pilot configuration
-Dexter also support auto pilot mode. If your existing kubectl context uses one of the supported OIDC-providers, Dexter will try to use the OIDC details from kubeconfig.
+kubeauth also support auto pilot mode. If your existing kubectl context uses one of the supported OIDC-providers, kubeauth will try to use the OIDC details from kubeconfig.
 
 ## Installation
 
-You can download a prebuilt version from the [Github release section](https://github.com/gini/dexter/releases) or build it yourself:
-
 ```
-go get -u github.com/gini/dexter
-cd $GOPATH/src/github.com/gini/dexter
+go get -u github.com/davidr-asapp/dexter-kubeauth
+cd $GOPATH/src/github.com/davidr-asapp/dexter-kubeauth
 
 # Linux
 OS=linux make
@@ -72,6 +64,12 @@ Run `dexter` without a command to access the help screen/intro.
 / /_/ \  ___/ >    <  |  | \  ___/|  | \/
 \____ |\___  >__/\_ \ |__|  \___  >__|
      \/    \/      \/           \/
+| |  / /
+| | / /
+|  \ \ UBEAUTH
+| | \ \
+| |  \ \
+
 
 dexter is a authentication helper for Kubernetes that does the heavy
 lifting for SSO (Single Sign On) for Kubernetes.
