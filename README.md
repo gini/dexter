@@ -1,7 +1,7 @@
 # Intro
 This fork is adding okta fat id_token support, particularly for groups.
 This enables RBAC rolebindings based on groups.
-The fork has as of 2a592d053d01fe11db6b58043c472f7b87ca67c deviated from dexter.
+The fork kubeauth branch has as of 2a592d053d01fe11db6b58043c472f7b87ca67c deviated from dexter.
 
 # kubeauth
 
