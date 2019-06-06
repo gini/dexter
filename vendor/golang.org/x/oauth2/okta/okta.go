@@ -11,6 +11,6 @@ import (
 )
 
 var Endpoint = oauth2.Endpoint{
-	AuthURL:  strings.Join([]string{"OIDC_ENDPOINT", "/v1/authorize"}, ""),
-	TokenURL: strings.Join([]string{"OIDC_ENDPOINT", "/v1/token"}, ""),
+	AuthURL:  strings.Join([]string{"https://asapp-eng.okta.com/oauth2/ausfe4bckxltltnik356", "/v1/authorize"}, ""),
+	TokenURL: strings.Join([]string{"https://asapp-eng.okta.com/oauth2/ausfe4bckxltltnik356", "/v1/token"}, ""),
 }

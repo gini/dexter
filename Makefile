@@ -88,8 +88,8 @@ bin/$(ARCH)/$(BIN):
 	    -X $(PKG)/version.GITHASH=$(GIT_HASH) \
 	    -X $(PKG)/version.DOB=$(DOB) \
 	    -X $(PKG)/cmd.defaultClientID=$(CLIENT_ID) \
-	    -X $(PKG)/cmd.defaultClientSecret=$(CLIENT_SECRET)"
-
+	    -X $(PKG)/cmd.defaultClientSecret=$(CLIENT_SECRET) \
+      -s -w"
 
 kubeauth: embed build kubeauth_complete  # NOTE: run make with -k to ensure unembedding of files, e.g. `make -k kubeauth`. Otherwise you run the risk of commiting creds into the repo.
 
