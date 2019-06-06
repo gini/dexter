@@ -1,9 +1,9 @@
 # Intro
 This fork is adding okta fat id_token support, particularly for groups.
-This (theoretically) enables RBAC rolebindings based on groups.
+This enables RBAC rolebindings based on groups.
+The fork has as of 2a592d053d01fe11db6b58043c472f7b87ca67c deviated from dexter.
 
 # kubeauth
-
 
 `kubeauth` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google or Azure as Identity Provider.
 All you need is a properly configured Google or Azure client ID & secret.
