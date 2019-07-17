@@ -33,10 +33,10 @@ func init() {
 }
 
 // Execute executes the root command.
-func Execute() {
+func Execute() error {
 	if Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	rootCmd.Execute()
+	return rootCmd.Execute()
 }
