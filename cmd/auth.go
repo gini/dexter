@@ -410,7 +410,7 @@ dexters authentication flow
 
 ➜ Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
 `,
-		Run: authCommand,
+		RunE: authCommand,
 	}
 )
 
@@ -427,23 +427,23 @@ func init() {
 }
 
 // the command to run
-func authCommand(cmd *cobra.Command, args []string) {
+func authCommand(cmd *cobra.Command, args []string) error {
 	if oidcData.clientID == "" || oidcData.clientSecret == "" {
 		log.Error("clientID and clientSecret cannot be empty!")
-		return
+		return errors.New("clientID and clientSecret cannot be empty!")
 	}
 
 	// setup oauth2 object
 	if err := oidcData.createOauth2Config(); err != nil {
 		log.Errorf("oauth2 configuration failed: %s", err)
-		return
+		return err
 	}
 
 	log.Info("Starting auth browser session. Please check your browser instances...")
 
 	if err := utils.OpenURL(oidcData.authUrl()); err != nil {
 		log.Errorf("Failed to open browser session: %s", err)
-		return
+		return err
 	}
 
 	log.Infof("Spawning http server to receive callbacks (%s)", oidcData.callback)
@@ -461,11 +461,12 @@ func authCommand(cmd *cobra.Command, args []string) {
 
 			oidcData.httpServer.Shutdown(ctx)
 			log.Infof("Shutdown completed")
-			os.Exit(0)
+			return nil
 		// OS signal was received
 		case sig := <-oidcData.signalChan:
 			log.Infof("Signal %d (%s) received. Initiating shutdown", sig, sig)
 			close(oidcData.quitChan)
+			return errors.New("Signal %d (%s) received. Initiating shutdown")
 		default:
 		}
 	}
