@@ -117,6 +117,11 @@ func (d *dexterOIDC) createOauth2Config() error {
 	case "google":
 		d.Oauth2Config.Endpoint = google.Endpoint
 		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
+	case "github":
+		d.Oauth2Config.Endpoint = oauth2.Endpoint{
+    		AuthURL:  "https://github.com/login/oauth/authorize",
+    		TokenURL: "https://github.com/login/oauth/access_token",
+    	}
 	default:
 		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
 	}
