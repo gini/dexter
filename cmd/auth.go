@@ -210,13 +210,19 @@ func (d *dexterOIDC) autoConfigureOauth2Config() error {
 }
 
 func (d *dexterOIDC) authUrl() string {
+	//return "https://github.com/login?client_id=3062cb2d837d6c162459&return_to=%2Flogin%2Foauth%2Fauthorize%3Fclient_id%3D3062cb2d837d6c162459%26response_type%3Dcode%26scope%3Duser%253Aemail%2Bread%253Aorg%26state%3Dojx22by6ppqqtmcc5frczu55b"
 	return d.Oauth2Config.AuthCodeURL(d.state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"))
+    //return "https://github.com/login?client_id=3062cb2d837d6c162459&return_to=%2Flogin%2Foauth%2Fauthorize%3Fclient_id%3D3062cb2d837d6c162459%26response_type%3Dcode%26scope%3Duser%253Aemail%2Bread%253Aorg%26state%3Dvse3vbxpqwoe3vpuvezfjcd5b"
+    //return "https://login.aus1hub1.eencloud.com/callback/"
 }
 
 // start HTTP server to receive callbacks. This has to be run in a go routine
 func (d *dexterOIDC) startHttpServer() {
 	// set HTTP server listen address from callback URL
 	parsedURL, err := url.Parse(d.callback)
+	//parsedURL, err := url.Parse("https://login.aus1hub1.eencloud.com/callback/?code=axqcczoxxawxymffwa354p4dk&state=Vgn2lp5QnymFtLntKX5dM8k773PwcM87T4hQtiESC1q8wkUBgw5D3kH0r5qJ")
+
+    log.Info("Parsed URL is %s", parsedURL)
 
 	if err != nil {
 		log.Errorf("Failed to parse callback URL: %s", err)
@@ -451,6 +457,8 @@ func authCommand(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+    //log.Infof("Spawning http server to receive callbacks (%s)", oidcData.authUrl())
+    //oidcData.authUrl() = "https://github.com/login?client_id=3062cb2d837d6c162459&return_to=%2Flogin%2Foauth%2Fauthorize%3Fclient_id%3D3062cb2d837d6c162459%26response_type%3Dcode%26scope%3Duser%253Aemail%2Bread%253Aorg%26state%3Doqjy3lrjdhk32mdbuytuanyye"
 	log.Infof("Spawning http server to receive callbacks (%s)", oidcData.callback)
 
 	// spawn HTTP server
@@ -475,4 +483,24 @@ func authCommand(cmd *cobra.Command, args []string) error {
 		default:
 		}
 	}
+}
+
+
+
+func (d *dexterOIDC) startHttpServer() {
+	// set HTTP server listen address from callback URL
+	parsedURL, err := url.Parse(d.callback)
+	//parsedURL, err := url.Parse("https://login.aus1hub1.eencloud.com/callback/?code=axqcczoxxawxymffwa354p4dk&state=Vgn2lp5QnymFtLntKX5dM8k773PwcM87T4hQtiESC1q8wkUBgw5D3kH0r5qJ")
+
+    log.Info("Parsed URL is %s", parsedURL)
+
+	if err != nil {
+		log.Errorf("Failed to parse callback URL: %s", err)
+		d.quitChan <- struct{}{}
+	}
+
+	d.httpServer.Addr = parsedURL.Host
+
+	http.HandleFunc("/callback", d.callbackHandler)
+	d.httpServer.ListenAndServe()
 }
