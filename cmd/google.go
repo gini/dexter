@@ -45,7 +45,8 @@ dexters authentication flow
 
 ➜ Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
 `,
-		RunE: GoogleCommand,
+		RunE:         GoogleCommand,
+		SilenceUsage: true,
 	}
 )
 

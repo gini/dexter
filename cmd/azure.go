@@ -9,11 +9,9 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/microsoft"
-	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 type AzureOIDC struct {
@@ -21,12 +19,23 @@ type AzureOIDC struct {
 	tenant     string // azure tenant
 }
 
-func (a *AzureOIDC) AuthInfoToOauth2(authInfo *clientCmdApi.AuthInfo) {
+func (a *AzureOIDC) Autopilot() error {
+	authInfo, err := ExtractAuthInfo(a.kubeConfig)
+
+	if err != nil {
+		return fmt.Errorf("failed to extract oidc configuration from the kube config: %s", err)
+	}
+
 	// fallback ti tenant common
 	a.tenant = "common"
 
 	// call parent method to initialize client credentials
 	a.DexterOIDC.AuthInfoToOauth2(authInfo)
+
+	// populate oauth2 config
+	a.Oauth2Config.RedirectURL = a.callback
+	a.Oauth2Config.ClientID = a.clientID
+	a.Oauth2Config.ClientSecret = a.clientSecret
 
 	// extract the issuer url
 	idp := authInfo.AuthProvider.Config["idp-issuer-url"]
@@ -38,17 +47,17 @@ func (a *AzureOIDC) AuthInfoToOauth2(authInfo *clientCmdApi.AuthInfo) {
 
 		if err != nil {
 			// failed to extract the azure tenant, use default "common
-			return
+			return err
 		}
 
 		res := re.FindStringSubmatch(idp)
 		if len(res) == 1 {
 			a.tenant = res[0] // found tenant
-			return
+			return nil
 		}
-	} else {
-		log.Info("No Microsoft auth provider configuration found")
 	}
+
+	return fmt.Errorf("no Microsoft auth provider configuration found")
 }
 
 var (
@@ -82,7 +91,8 @@ dexters authentication flow
 
 ➜ Unless you have a good reason to do so please use the built-in Microsoft credentials (if they were added at build time)!
 `,
-		RunE: AzureCommand,
+		RunE:         AzureCommand,
+		SilenceUsage: true,
 	}
 )
 

@@ -57,8 +57,9 @@ type CustomClaim struct {
 
 // interface that all OIDC providers need to implement
 type OIDCProvider interface {
+	ConfigureOAuth2Manully() error
+	Autopilot() error
 	PreflightCheck() error
-	CreateOauth2Config() error
 	GenerateAuthUrl() string
 	StartHTTPServer() error
 }
@@ -90,42 +91,47 @@ func (d DexterOIDC) PreflightCheck() error {
 }
 
 // create Oauth2 configuration
-func (d *DexterOIDC) CreateOauth2Config() error {
-	return d.DefaultOauth2Config()
-}
-
-// create Oauth2 configuration
 func (d *DexterOIDC) AuthInfoToOauth2(authInfo *clientCmdApi.AuthInfo) {
 	d.clientSecret = authInfo.AuthProvider.Config["client-secret"]
 	d.clientID = authInfo.AuthProvider.Config["client-id"]
 }
 
-func (d *DexterOIDC) DefaultOauth2Config() error {
+// attempt to set client credentials
+func (d *DexterOIDC) ConfigureOAuth2Manully() error {
+	d.Oauth2Config.RedirectURL = d.callback
+
 	// no commandline client credentials supplied
 	if d.clientID == "REDACTED" && d.clientSecret == "REDACTED" {
 		// no builtin defaults - let's try auto-configuration
 		if buildTimeClientID == "" && buildTimeClientSecret == "" {
-			log.Info("Autopilot mode - no credentials set")
-			if authInfo, err := ExtractAuthInfo(d.kubeConfig); err != nil {
-				return errors.New(fmt.Sprintf("failed to extract oidc configuration from the kube config: %s", err))
-			} else {
-				d.AuthInfoToOauth2(authInfo)
-			}
-		} else if buildTimeClientID != "" && buildTimeClientSecret != "" {
-			// use build-time defaults if no clientId & clientSecret was provided
+			return errors.New("cannot set client credentials: empty commandline and builtin defaults")
+		} else {
 			log.Info("Using builtin credentials - no credentials set")
 			d.clientID = buildTimeClientID
 			d.clientSecret = buildTimeClientSecret
 		}
 	}
 
-	// setup oidc client context
-	oidc.ClientContext(context.Background(), d.httpClient)
-
 	// populate oauth2 config
 	d.Oauth2Config.ClientID = d.clientID
 	d.Oauth2Config.ClientSecret = d.clientSecret
-	d.Oauth2Config.RedirectURL = d.callback
+
+	return nil
+}
+
+func (d *DexterOIDC) Autopilot() error {
+	log.Info("Autopilot mode - no credentials set")
+	if authInfo, err := ExtractAuthInfo(d.kubeConfig); err != nil {
+		return errors.New(fmt.Sprintf("failed to extract oidc configuration from the kube config: %s", err))
+	} else {
+		d.clientSecret = authInfo.AuthProvider.Config["client-secret"]
+		d.clientID = authInfo.AuthProvider.Config["client-id"]
+
+		// populate oauth2 config
+		d.Oauth2Config.RedirectURL = d.callback
+		d.Oauth2Config.ClientID = d.clientID
+		d.Oauth2Config.ClientSecret = d.clientSecret
+	}
 
 	return nil
 }
@@ -370,14 +376,18 @@ func init() {
 
 // initiate the OIDC flow. This func should be called in each cobra command
 func AuthenticateToProvider(provider OIDCProvider) error {
+	// attempt to set client credentials with dexter data
+	if err := provider.ConfigureOAuth2Manully(); err != nil {
+		log.Infof("Fallback to autopilot mode: %s", err)
+
+		if err := provider.Autopilot(); err != nil {
+			return fmt.Errorf("failed to configure oauth2 credentials: %s", err)
+		}
+	}
+
 	// ensure that the required fields and values are sane
 	if err := provider.PreflightCheck(); err != nil {
 		return fmt.Errorf("failed to complete the provider preflight check: %s", err)
-	}
-
-	// create the Oauth2 configuration
-	if err := provider.CreateOauth2Config(); err != nil {
-		return fmt.Errorf("failed to create the Oauth2 provider configuration: %s", err)
 	}
 
 	log.Info("Starting auth browser session. Please check your browser instances...")
