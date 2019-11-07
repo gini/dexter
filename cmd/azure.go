@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"regexp"
@@ -64,10 +65,11 @@ var (
 
 	azureCmd = &cobra.Command{
 		Use:   "azure",
-		Short: "Authenticate with OIDC provider",
+		Short: "Authenticate with the Microsoft Azure Identity Provider",
 		Long: `Use your Microsoft login to get a JWT (JSON Web Token) and update your
 local k8s config accordingly. A refresh token is added and automatically refreshed 
 by kubectl. Existing token configurations are overwritten.
+
 For details go to: https://blog.gini.net/
 
 dexters authentication flow
@@ -80,7 +82,7 @@ dexters authentication flow
 
 ➜ Unless you have a good reason to do so please use the built-in Microsoft credentials (if they were added at build time)!
 `,
-		Run: AzureCommand,
+		RunE: AzureCommand,
 	}
 )
 
@@ -92,13 +94,15 @@ func init() {
 	azureCmd.PersistentFlags().StringVarP(&azureProvider.tenant, "tenant", "t", "common", "Your azure tenant")
 }
 
-func AzureCommand(cmd *cobra.Command, args []string) {
+func AzureCommand(cmd *cobra.Command, args []string) error {
 	azureProvider.initialize()
 
 	azureProvider.Oauth2Config.Endpoint = microsoft.AzureADEndpoint(azureProvider.tenant)
 	azureProvider.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "email"}
 
 	if err := AuthenticateToProvider(azureProvider); err != nil {
-		log.Errorf("Authentication failed: %s", err)
+		return fmt.Errorf("authentication failed: %s", err)
 	}
+
+	return nil
 }

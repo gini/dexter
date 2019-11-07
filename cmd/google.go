@@ -1,12 +1,12 @@
 package cmd
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/coreos/go-oidc"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -28,10 +28,11 @@ var (
 
 	googleCmd = &cobra.Command{
 		Use:   "google",
-		Short: "Authenticate with OIDC provider",
+		Short: "Authenticate with the Google Identity Provider",
 		Long: `Use your Google login to get a JWT (JSON Web Token) and update your
 local k8s config accordingly. A refresh token is added and automatically refreshed 
 by kubectl. Existing token configurations are overwritten.
+
 For details go to: https://blog.gini.net/
 
 dexters authentication flow
@@ -44,7 +45,7 @@ dexters authentication flow
 
 ➜ Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
 `,
-		Run: GoogleCommand,
+		RunE: GoogleCommand,
 	}
 )
 
@@ -53,13 +54,15 @@ func init() {
 	AuthCmd.AddCommand(googleCmd)
 }
 
-func GoogleCommand(cmd *cobra.Command, args []string) {
+func GoogleCommand(cmd *cobra.Command, args []string) error {
 	googleProvider.initialize()
 
 	googleProvider.Oauth2Config.Endpoint = google.Endpoint
 	googleProvider.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
 
 	if err := AuthenticateToProvider(googleProvider); err != nil {
-		log.Errorf("Authentication failed: %s", err)
+		return fmt.Errorf("authentication failed: %s", err)
 	}
+
+	return nil
 }

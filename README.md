@@ -5,9 +5,16 @@
 `dexter` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google or Azure as Identity Provider.
 All you need is a properly configured Google or Azure client ID & secret.
 
+## Supported identity providers
+
+| Identity Provider  | State    |
+|--------------------|----------|
+|  Google            | complete |
+|  Microsoft Azure   | complete |
+
 ## Authentication Flow
 
-`dexter` will open a new browser window and redirect you to your configured Idp. The only interaction you have is the login at your provider and your k8s config is updated automatically.
+`dexter` will open a new browser tag/window and redirect you to your configured Idp. The only interaction you have is the login at your provider and your k8s config is updated automatically.
 
 ![dexter flow](/assets/dexter_flow.png?raw=true "dexter flow")
 
@@ -15,25 +22,31 @@ All you need is a properly configured Google or Azure client ID & secret.
 
 ![dexter in action](/assets/dexter.gif?raw=true "dexter in action")
 
-## Configuration
-### Google credentials
+## OIDCProvider Configuration
 
-  -  Open [console.developers.google.com](https://console.developers.google.com)
-  -  Create new credentials
-      - OAuth Client ID
-      - Web Application
-      - Authorized redirect URIs: http://127.0.0.1:64464/callback
+Each OpenID Connect provider requires some configuration. This basic
+description may not be all you have to do but it worked at the time of
+writing.
 
-### Or, configure Azure credentials
+### Google
 
-  -  Open [portal.azure.com](https://portal.azure.com)
-  -  Go to App registrations and create a new app
-      - Enter reply URI http://127.0.0.1:64464/callback
-      - Create secret key
-      - Collect application ID (client ID)
+  - Open [console.developers.google.com](https://console.developers.google.com)
+  - Create new credentials
+    - OAuth Client ID
+    - Web Application
+    - Authorized redirect URIs: http://127.0.0.1:64464/callback
+
+### Microsoft Azure
+
+  - Open [portal.azure.com](https://portal.azure.com)
+  - Go to Appregistrations and create a new app
+    - Enter reply URI http://127.0.0.1:64464/callback
+    - Create secret key
+    - Collect  application ID (client ID)
 
 ### Auto pilot configuration
-Dexter also support auto pilot mode. If your existing kubectl context uses one of the supported OIDC-providers, Dexter will try to use the OIDC details from kubeconfig.
+
+`dexter` also support auto pilot mode. If your existing kubectl context uses one of the supported Identity Providers, `dexter` will try to use extract the OIDC data from kubeconfig.
 
 ## Installation
 
@@ -87,40 +100,32 @@ Flags:
 Use "dexter [command] --help" for more information about a command.
 ```
 
-Running `dexter auth` will start the authentication process.
+Running `dexter auth [Idp]` will start the authentication process.
 
 ```
  ❯ ./build/dexter_darwin_amd64 auth --help
-Use your Google login to get a JWT (JSON Web Token) and update your
-local k8s config accordingly. A refresh token is added and automatically refreshed
-by kubectl. Existing token configurations are overwritten.
+Use a provider sub-command to authenticate against your identity provider of choice.
 For details go to: https://blog.gini.net/
 
-dexters authentication flow
-===========================
-
-1. Open a browser window/tab and redirect you to Google (https://accounts.google.com)
-2. You login with your Google credentials
-3. You will be redirected to dexters builtin webserver and can now close the browser tab
-4. dexter extracts the token from the callback and patches your ~/.kube/config
-
-➜ Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
-
 Usage:
-  dexter auth [flags]
+  dexter auth [command]
+
+Available Commands:
+  azure       Authenticate with the Microsoft Azure Identity Provider
+  google      Authenticate with the Google Identity Provider
 
 Flags:
   -c, --callback string        Callback URL. The listen address is dreived from that. (default "http://127.0.0.1:64464/callback")
   -i, --client-id string       Google clientID (default "REDACTED")
   -s, --client-secret string   Google clientSecret (default "REDACTED")
   -d, --dry-run                Toggle config overwrite
-  -e, --endpoint string        OIDC-providers: google or azure (default "google")
   -h, --help                   help for auth
-  -k, --kube-config string     Overwrite the default location of kube config (~/.kube/config) (default "/Users/dkerwin/.kube/config")
-  -t, --tenant string          Your azure tenant (default "common")
+  -k, --kube-config string     Overwrite the default location of kube config (default "/Users/dkerwin/.kube/config")
 
 Global Flags:
   -v, --verbose   verbose output
+
+Use "dexter auth [command] --help" for more information about a command.
 ```
 
 ## Contribution Guidelines
@@ -133,9 +138,17 @@ It's awesome that you consider contributing to `dexter` and it's really simple. 
   - update documentation if necessary
   - open a pull request
 
-## Authors
+## Authors & Contributors
 
-Initial code was written by [Daniel Kerwin](mailto:daniel@gini.net) & [David González Ruiz](mailto:david@gini.net)
+Initial code was written by [Daniel Kerwin](mailto:daniel@gini.net) & David González Ruiz
+
+Contributors (in alphabetical order):
+  - @andrewsav-datacom
+  - @Lujeni
+  - @pussinboots
+  - @tillepille
+
+Thank you so much!
 
 ## Acknowledgements
 

@@ -44,20 +44,8 @@ var (
 	AuthCmd = &cobra.Command{
 		Use:   "auth",
 		Short: "Authenticate with OIDC provider",
-		Long: `Use your Google login to get a JWT (JSON Web Token) and update your
-local k8s config accordingly. A refresh token is added and automatically refreshed 
-by kubectl. Existing token configurations are overwritten.
+		Long: `Use a provider sub-command to authenticate against your identity provider of choice.
 For details go to: https://blog.gini.net/
-
-dexters authentication flow
-===========================
-
-1. Open a browser window/tab and redirect you to Google (https://accounts.google.com)
-2. You login with your Google credentials
-3. You will be redirected to dexters builtin webserver and can now close the browser tab
-4. dexter extracts the token from the callback and patches your ~/.kube/config
-
-➜ Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
 `,
 	}
 )
@@ -376,7 +364,7 @@ func init() {
 	AuthCmd.PersistentFlags().StringVarP(&clientID, "client-id", "i", "REDACTED", "Google clientID")
 	AuthCmd.PersistentFlags().StringVarP(&clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
 	AuthCmd.PersistentFlags().StringVarP(&callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
-	AuthCmd.PersistentFlags().StringVarP(&kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")
+	AuthCmd.PersistentFlags().StringVarP(&kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config")
 	AuthCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Toggle config overwrite")
 }
 
