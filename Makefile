@@ -85,8 +85,8 @@ bin/$(ARCH)/$(BIN):
 	  -ldflags "-X $(PKG)/version.VERSION=$(VERSION) \
 	    -X $(PKG)/version.GITHASH=$(GIT_HASH) \
 	    -X $(PKG)/version.DOB=$(DOB) \
-	    -X $(PKG)/cmd.defaultClientID=$(CLIENT_ID) \
-	    -X $(PKG)/cmd.defaultClientSecret=$(CLIENT_SECRET)"
+	    -X $(PKG)/cmd.buildTimeClientID=$(CLIENT_ID) \
+	    -X $(PKG)/cmd.buildTimeClientSecret=$(CLIENT_SECRET)"
 
 # Run go vet on repo
 vet:
