@@ -143,10 +143,11 @@ It's awesome that you consider contributing to `dexter` and it's really simple. 
 Initial code was written by [Daniel Kerwin](mailto:daniel@gini.net) & David González Ruiz
 
 Contributors (in alphabetical order):
-  - @andrewsav-datacom
-  - @Lujeni
-  - @pussinboots
-  - @tillepille
+-   https://github.com/andrewsav-datacom
+-   https://github.com/cblims
+-   https://github.com/Lujeni
+-   https://github.com/pussinboots
+-   https://github.com/tillepille
 
 Thank you so much!
 
