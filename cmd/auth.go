@@ -4,38 +4,80 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/coreos/go-oidc"
-	"github.com/ghodss/yaml"
-	"github.com/gini/dexter/utils"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"golang.org/x/oauth2/microsoft"
-	"gopkg.in/square/go-jose.v2/jwt"
 	"io/ioutil"
-	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/clientcmd"
-	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
-	clientCmdLatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"os/user"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/coreos/go-oidc"
+	"github.com/ghodss/yaml"
+	"github.com/gini/dexter/utils"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"golang.org/x/oauth2"
+	"gopkg.in/square/go-jose.v2/jwt"
+	k8sRuntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/clientcmd"
+	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
+	clientCmdLatest "k8s.io/client-go/tools/clientcmd/api/latest"
 )
 
-// dexterOIDC: struct to store the required data and provide methods to
-// authenticate with Googles OpenID implementation
-type dexterOIDC struct {
-	endpoint     string         // azure or google
-	azureTenant  string         // azure tenant
+var (
+	// default injected at build time. This is optional
+	buildTimeClientID     string
+	buildTimeClientSecret string
+
+	// commandline flags
+	clientID     string
+	clientSecret string
+	callback     string
+	kubeConfig   string
+	dryRun       bool
+
+	// Cobra command
+	AuthCmd = &cobra.Command{
+		Use:   "auth",
+		Short: "Authenticate with OIDC provider",
+		Long: `Use your Google login to get a JWT (JSON Web Token) and update your
+local k8s config accordingly. A refresh token is added and automatically refreshed 
+by kubectl. Existing token configurations are overwritten.
+For details go to: https://blog.gini.net/
+
+dexters authentication flow
+===========================
+
+1. Open a browser window/tab and redirect you to Google (https://accounts.google.com)
+2. You login with your Google credentials
+3. You will be redirected to dexters builtin webserver and can now close the browser tab
+4. dexter extracts the token from the callback and patches your ~/.kube/config
+
+➜ Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
+`,
+	}
+)
+
+// helper type to render the k8s config
+type CustomClaim struct {
+	Email string `json:"email"`
+}
+
+// interface that all OIDC providers need to implement
+type OIDCProvider interface {
+	PreflightCheck() error
+	CreateOauth2Config() error
+	GenerateAuthUrl() string
+	StartHTTPServer() error
+}
+
+// DexterOIDC: struct to store the required data and provide methods to
+// authenticate with OpenID providers
+type DexterOIDC struct {
 	clientID     string         // clientID commandline flag
 	clientSecret string         // clientSecret commandline flag
 	callback     string         // callback URL commandline flag
@@ -50,55 +92,42 @@ type dexterOIDC struct {
 	signalChan   chan os.Signal // react on signals from the outside world
 }
 
-// initialize the struct, parse commandline flags and install a signal handler
-func (d *dexterOIDC) initialize() error {
-	// install signal handler
-	signal.Notify(
-		oidcData.signalChan,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
-
-	// get active user (to get the homedirectory)
-	usr, err := user.Current()
-
-	if err != nil {
-		return errors.New(fmt.Sprintf("failed to determine current user: %s", err))
+// ensure that the required parameters are defined and that the values make sense
+func (d DexterOIDC) PreflightCheck() error {
+	if d.clientID == "" || d.clientSecret == "" {
+		return errors.New("clientID and clientSecret cannot be empty")
 	}
-
-	// construct the path to the users .kube/config file as a default
-	kubeConfigDefaultPath := filepath.Join(usr.HomeDir, ".kube", "config")
-
-	// setup commandline flags
-	AuthCmd.PersistentFlags().StringVarP(&d.endpoint, "endpoint", "e", "google", "OIDC-providers: google or azure")
-	AuthCmd.PersistentFlags().StringVarP(&d.azureTenant, "tenant", "t", "common", "Your azure tenant")
-	AuthCmd.PersistentFlags().StringVarP(&d.clientID, "client-id", "i", "REDACTED", "Google clientID")
-	AuthCmd.PersistentFlags().StringVarP(&d.clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
-	AuthCmd.PersistentFlags().StringVarP(&d.callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
-	AuthCmd.PersistentFlags().StringVarP(&d.kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")
-	AuthCmd.PersistentFlags().BoolVarP(&d.dryRun, "dry-run", "d", false, "Toggle config overwrite")
-
-	// create random string as CSRF protection for the oauth2 flow
-	d.state = utils.RandomString()
 
 	return nil
 }
 
-// setup and populate the OAuth2 config
-func (d *dexterOIDC) createOauth2Config() error {
+// create Oauth2 configuration
+func (d *DexterOIDC) CreateOauth2Config() error {
+	return d.DefaultOauth2Config()
+}
+
+// create Oauth2 configuration
+func (d *DexterOIDC) AuthInfoToOauth2(authInfo *clientCmdApi.AuthInfo) {
+	d.clientSecret = authInfo.AuthProvider.Config["client-secret"]
+	d.clientID = authInfo.AuthProvider.Config["client-id"]
+}
+
+func (d *DexterOIDC) DefaultOauth2Config() error {
 	// no commandline client credentials supplied
 	if d.clientID == "REDACTED" && d.clientSecret == "REDACTED" {
 		// no builtin defaults - let's try auto-configuration
-		if defaultClientID == "" && defaultClientSecret == "" {
+		if buildTimeClientID == "" && buildTimeClientSecret == "" {
 			log.Info("Autopilot mode - no credentials set")
-			if err := d.autoConfigureOauth2Config(); err != nil {
+			if authInfo, err := ExtractAuthInfo(d.kubeConfig); err != nil {
 				return errors.New(fmt.Sprintf("failed to extract oidc configuration from the kube config: %s", err))
+			} else {
+				d.AuthInfoToOauth2(authInfo)
 			}
-		} else if defaultClientID != "" && defaultClientSecret != "" {
+		} else if buildTimeClientID != "" && buildTimeClientSecret != "" {
 			// use build-time defaults if no clientId & clientSecret was provided
 			log.Info("Using builtin credentials - no credentials set")
-			d.clientID = defaultClientID
-			d.clientSecret = defaultClientSecret
+			d.clientID = buildTimeClientID
+			d.clientSecret = buildTimeClientSecret
 		}
 	}
 
@@ -106,110 +135,19 @@ func (d *dexterOIDC) createOauth2Config() error {
 	oidc.ClientContext(context.Background(), d.httpClient)
 
 	// populate oauth2 config
-	d.Oauth2Config.ClientID = oidcData.clientID
-	d.Oauth2Config.ClientSecret = oidcData.clientSecret
-	d.Oauth2Config.RedirectURL = oidcData.callback
-
-	switch oidcData.endpoint {
-	case "azure":
-		d.Oauth2Config.Endpoint = microsoft.AzureADEndpoint(oidcData.azureTenant)
-		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "email"}
-	case "google":
-		d.Oauth2Config.Endpoint = google.Endpoint
-		d.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
-	default:
-		return errors.New(fmt.Sprintf("unsupported endpoint: %s", oidcData.endpoint))
-	}
+	d.Oauth2Config.ClientID = d.clientID
+	d.Oauth2Config.ClientSecret = d.clientSecret
+	d.Oauth2Config.RedirectURL = d.callback
 
 	return nil
 }
 
-// populate the Oauth2Config object from the kube config. Return an error when the operation failed
-func (d *dexterOIDC) autoConfigureOauth2Config() error {
-	// initialize the clientConfig and error variables
-	var clientCfg *clientCmdApi.Config
-	var err error
-
-	// try to load the credentials from the kubeconfig specified on the commandline
-	if d.kubeConfig != "" {
-		clientCfg, err = clientcmd.LoadFromFile(d.kubeConfig)
-
-		if err != nil {
-			return errors.New(fmt.Sprintf("failed to load kubeconfig from %s: %s", d.kubeConfig, err))
-		}
-	} else {
-		// try to load credentials from CurrentContext
-		clientCfg, err = clientcmd.NewDefaultClientConfigLoadingRules().Load()
-
-		if err != nil {
-			return errors.New(fmt.Sprintf("failed to load kubeconfig from the default locations: %s", err))
-		}
-	}
-
-	// loop through all the contexts until we find the current context
-	for contextName, context := range clientCfg.Contexts {
-		// find the context definition that matches the current active context
-		if contextName == clientCfg.CurrentContext {
-			// loop through the global authentication definitions
-			for authName, authInfo := range clientCfg.AuthInfos {
-				// find the authentication definition that is in use in the current context
-				if authName == context.AuthInfo {
-					// ensure it is oidc based
-					if authInfo.AuthProvider != nil && authInfo.AuthProvider.Name == "oidc" {
-						// verify that relevant keys exist
-						for _, key := range []string{"client-id", "client-secret", "idp-issuer-url"} {
-							if _, ok := authInfo.AuthProvider.Config[key]; !ok {
-								return errors.New(fmt.Sprintf("%s is missing in kubeconfig: %s", key, err))
-							}
-						}
-
-						// set client credentials and idp url based on the kubeconfig definition
-						d.clientSecret = authInfo.AuthProvider.Config["client-secret"]
-						d.clientID = authInfo.AuthProvider.Config["client-id"]
-						idp := authInfo.AuthProvider.Config["idp-issuer-url"]
-
-						// set endpoint based on a match on the issuer URL
-						if strings.Contains(idp, "google") {
-							oidcData.endpoint = "google"
-
-						} else if strings.Contains(idp, "microsoft") {
-							oidcData.endpoint = "azure"
-
-
-							re, err := regexp.Compile(`[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}`) //find uuid, this is tenant
-
-							if err != nil {
-								// failed to extract the azure tenant, use default "common
-								oidcData.azureTenant = "common"
-								return nil
-
-							}
-
-							res := re.FindStringSubmatch(idp)
-							if len(res) == 1 {
-								oidcData.azureTenant = res[0] // found tenant
-							} else {
-								// failed to find tenant, use common
-								oidcData.azureTenant = "common"
-							}
-						}
-
-						return nil
-					}
-				}
-			}
-		}
-	}
-
-	return errors.New("failed to auto-configure OIDC from kubeconfig")
-}
-
-func (d *dexterOIDC) authUrl() string {
+func (d DexterOIDC) GenerateAuthUrl() string {
 	return d.Oauth2Config.AuthCodeURL(d.state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"))
 }
 
 // start HTTP server to receive callbacks. This has to be run in a go routine
-func (d *dexterOIDC) startHttpServer() {
+func (d DexterOIDC) StartHTTPServer() error {
 	// set HTTP server listen address from callback URL
 	parsedURL, err := url.Parse(d.callback)
 
@@ -221,11 +159,56 @@ func (d *dexterOIDC) startHttpServer() {
 	d.httpServer.Addr = parsedURL.Host
 
 	http.HandleFunc("/callback", d.callbackHandler)
-	d.httpServer.ListenAndServe()
+
+	go func(d DexterOIDC) {
+		if err := d.httpServer.ListenAndServe(); err != nil {
+			log.Errorf("Failed to start HTTP server: %s", err)
+		}
+	}(d)
+
+	for {
+		select {
+		// flow was completed or error occured
+		case <-d.quitChan:
+			log.Debugf("Shutdown signal received. We're done here")
+
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+
+			d.httpServer.Shutdown(ctx)
+			cancel()
+			log.Infof("Shutdown completed")
+			return nil
+		// OS signal was received
+		case sig := <-d.signalChan:
+			close(d.quitChan)
+			return fmt.Errorf("signal %d (%s) received. Initiating shutdown", sig, sig)
+		default:
+		}
+	}
+
+}
+
+// initialize the struct, parse commandline flags and install a signal handler
+func (d *DexterOIDC) initialize() {
+	// install signal handler
+	signal.Notify(
+		d.signalChan,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+
+	// create random string as CSRF protection for the oauth2 flow
+	d.state = utils.RandomString()
+
+	d.clientID = clientID
+	d.clientSecret = clientSecret
+	d.callback = callback
+	d.kubeConfig = kubeConfig
+	d.dryRun = dryRun
 }
 
 // accept callbacks from your browser
-func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
+func (d *DexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info("callback received")
 
 	// Get code and state from the passed form value
@@ -240,7 +223,7 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// compare callback state and initial state
-	if callbackState != oidcData.state {
+	if callbackState != d.state {
 		log.Error("state mismatch! Someone could be tampering with your connection!")
 		http.Error(w, "state mismatch! Someone could be tampering with your connection!", http.StatusBadRequest)
 		return
@@ -250,7 +233,7 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	// create context and exchange authCode for token
 	ctx := oidc.ClientContext(r.Context(), d.httpClient)
-	token, err := oidcData.Oauth2Config.Exchange(ctx, code)
+	token, err := d.Oauth2Config.Exchange(ctx, code)
 
 	if err != nil {
 		log.Errorf("Failed to exchange auth code: %s", err)
@@ -268,7 +251,7 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// We're done here
-	oidcData.quitChan <- struct{}{}
+	d.quitChan <- struct{}{}
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("<html><body>Authentication completed. It's safe to close this window now ;-)</body></html>"))
@@ -276,12 +259,8 @@ func (d *dexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-type CustomClaim struct {
-	Email string `json:"email"`
-}
-
 // write the k8s config
-func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
+func (d *DexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	// acquire lock
 	d.k8sMutex.Lock()
 	defer d.k8sMutex.Unlock()
@@ -324,7 +303,7 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	}
 
 	// write the rendered config snipped when dry-run is enabled
-	if oidcData.dryRun {
+	if d.dryRun {
 		// create a JSON representation
 		json, err := k8sRuntime.Encode(clientCmdLatest.Codec, config)
 
@@ -378,96 +357,70 @@ func (d *dexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	return nil
 }
 
-var (
-	// default injected at build time. This is optional
-	defaultClientID     string
-	defaultClientSecret string
-
-	// initialize dexter OIDC config
-	oidcData = dexterOIDC{
-		Oauth2Config: &oauth2.Config{},
-		httpClient:   &http.Client{Timeout: 2 * time.Second},
-		quitChan:     make(chan struct{}),
-		signalChan:   make(chan os.Signal, 1),
-	}
-
-	// Cobra command
-	AuthCmd = &cobra.Command{
-		Use:   "auth",
-		Short: "Authenticate with OIDC provider",
-		Long: `Use your Google login to get a JWT (JSON Web Token) and update your
-local k8s config accordingly. A refresh token is added and automatically refreshed 
-by kubectl. Existing token configurations are overwritten.
-For details go to: https://blog.gini.net/
-
-dexters authentication flow
-===========================
-
-1. Open a browser window/tab and redirect you to Google (https://accounts.google.com)
-2. You login with your Google credentials
-3. You will be redirected to dexters builtin webserver and can now close the browser tab
-4. dexter extracts the token from the callback and patches your ~/.kube/config
-
-➜ Unless you have a good reason to do so please use the built-in google credentials (if they were added at build time)!
-`,
-		RunE: authCommand,
-	}
-)
-
 // initialize the command
 func init() {
+	kubeConfigDefaultPath := ""
+
+	// get active user (to get the homedirectory)
+	if usr, err := user.Current(); err != nil {
+		log.Errorf("failed to determine current user: %s", err)
+	} else {
+		// construct the path to the users .kube/config file as a default
+		kubeConfigDefaultPath = filepath.Join(usr.HomeDir, ".kube", "config")
+	}
+
 	// add the auth command
 	rootCmd.AddCommand(AuthCmd)
 
-	// parse commandline flags
-	if err := oidcData.initialize(); err != nil {
-		log.Errorf("Failed to initialize OIDC provider: %s", err)
-		os.Exit(1)
-	}
+	// setup commandline flags
+	AuthCmd.PersistentFlags().StringVarP(&clientID, "client-id", "i", "REDACTED", "Google clientID")
+	AuthCmd.PersistentFlags().StringVarP(&clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
+	AuthCmd.PersistentFlags().StringVarP(&callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
+	AuthCmd.PersistentFlags().StringVarP(&kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config (~/.kube/config)")
+	AuthCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Toggle config overwrite")
 }
 
-// the command to run
-func authCommand(cmd *cobra.Command, args []string) error {
-	if oidcData.clientID == "" || oidcData.clientSecret == "" {
-		log.Error("clientID and clientSecret cannot be empty!")
-		return errors.New("clientID and clientSecret cannot be empty!")
+// initiate the OIDC flow. This func should be called in each cobra command
+func AuthenticateToProvider(provider OIDCProvider) error {
+	// ensure that the required fields and values are sane
+	if err := provider.PreflightCheck(); err != nil {
+		return fmt.Errorf("failed to complete the provider preflight check: %s", err)
 	}
 
-	// setup oauth2 object
-	if err := oidcData.createOauth2Config(); err != nil {
-		log.Errorf("oauth2 configuration failed: %s", err)
-		return err
+	// create the Oauth2 configuration
+	if err := provider.CreateOauth2Config(); err != nil {
+		return fmt.Errorf("failed to create the Oauth2 provider configuration: %s", err)
 	}
 
 	log.Info("Starting auth browser session. Please check your browser instances...")
 
-	if err := utils.OpenURL(oidcData.authUrl()); err != nil {
-		log.Errorf("Failed to open browser session: %s", err)
-		return err
+	if err := utils.OpenURL(provider.GenerateAuthUrl()); err != nil {
+		return fmt.Errorf("failed to open browser session: %s", err)
 	}
 
-	log.Infof("Spawning http server to receive callbacks (%s)", oidcData.callback)
+	log.Info("Spawning http server to receive callbacks")
 
 	// spawn HTTP server
-	go oidcData.startHttpServer()
-
-	for {
-		select {
-		// flow was completed or error occured
-		case <-oidcData.quitChan:
-			log.Debugf("Shutdown signal received. We're done here")
-
-			ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
-
-			oidcData.httpServer.Shutdown(ctx)
-			log.Infof("Shutdown completed")
-			return nil
-		// OS signal was received
-		case sig := <-oidcData.signalChan:
-			log.Infof("Signal %d (%s) received. Initiating shutdown", sig, sig)
-			close(oidcData.quitChan)
-			return errors.New("Signal %d (%s) received. Initiating shutdown")
-		default:
-		}
+	if err := provider.StartHTTPServer(); err != nil {
+		return fmt.Errorf("HTTP server: %s", err)
 	}
+
+	return nil
+}
+
+// extract relevant authentication data from the given kube config
+func ExtractAuthInfo(kubeConfig string) (*clientCmdApi.AuthInfo, error) {
+	var clientCfg *clientCmdApi.Config
+	var authInfo *clientCmdApi.AuthInfo
+	var err error
+
+	if clientCfg, err = utils.ParseKubernetesClientConfig(kubeConfig); err != nil {
+		return nil, err
+	}
+
+	if authInfo, err = utils.ExtractOIDCAuthProvider(clientCfg); err != nil {
+		return nil, err
+	}
+
+	return authInfo, nil
 }
