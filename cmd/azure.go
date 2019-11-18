@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-oidc"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/microsoft"
@@ -20,6 +21,8 @@ type AzureOIDC struct {
 }
 
 func (a *AzureOIDC) Autopilot() error {
+	log.Debug("Azure OIDC autopilot mode")
+
 	authInfo, err := ExtractAuthInfo(a.kubeConfig)
 
 	if err != nil {
@@ -52,7 +55,11 @@ func (a *AzureOIDC) Autopilot() error {
 
 		res := re.FindStringSubmatch(idp)
 		if len(res) == 1 {
-			a.tenant = res[0] // found tenant
+			// found tenant: override  endpoint
+			azureProvider.tenant = res[0]
+			a.Oauth2Config.Endpoint = microsoft.AzureADEndpoint(azureProvider.tenant)
+
+			log.Debugf("Extracted tenant: %s", a.tenant)
 			return nil
 		}
 	}

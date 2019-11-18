@@ -179,7 +179,6 @@ func (d DexterOIDC) StartHTTPServer() error {
 		default:
 		}
 	}
-
 }
 
 // initialize the struct, parse commandline flags and install a signal handler
