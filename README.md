@@ -121,6 +121,7 @@ Flags:
   -d, --dry-run                Toggle config overwrite
   -h, --help                   help for auth
   -k, --kube-config string     Overwrite the default location of kube config (default "/Users/dkerwin/.kube/config")
+  -u, --kube-username string   Username identifier in the kube config
 
 Global Flags:
   -v, --verbose   verbose output

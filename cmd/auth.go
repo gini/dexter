@@ -38,6 +38,7 @@ var (
 	clientSecret string
 	callback     string
 	kubeConfig   string
+	kubeUsername string
 	dryRun       bool
 
 	// Cobra command
@@ -72,6 +73,7 @@ type DexterOIDC struct {
 	callback     string         // callback URL commandline flag
 	state        string         // CSRF protection
 	kubeConfig   string         // location of the kube config file
+	kubeUsername string         // name identifier to store the user data
 	dryRun       bool           // don't update the kubectl config
 	Oauth2Config *oauth2.Config // oauth2 configuration
 	k8sMutex     sync.RWMutex   // mutex to prevent simultaneous write to kubectl config
@@ -197,6 +199,7 @@ func (d *DexterOIDC) initialize() {
 	d.clientSecret = clientSecret
 	d.callback = callback
 	d.kubeConfig = kubeConfig
+	d.kubeUsername = kubeUsername
 	d.dryRun = dryRun
 }
 
@@ -274,7 +277,11 @@ func (d *DexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 		return errors.New(fmt.Sprintf("failed to get user details from token: %s", err))
 	}
 
-	email := customClaim.Email
+	userIdentifier := customClaim.Email
+
+	if d.kubeUsername != "" {
+		userIdentifier = d.kubeUsername
+	}
 
 	// construct the authinfo struct
 	authInfo := &clientCmdApi.AuthInfo{
@@ -292,7 +299,7 @@ func (d *DexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 
 	// contruct the config snippet
 	config := &clientCmdApi.Config{
-		AuthInfos: map[string]*clientCmdApi.AuthInfo{email: authInfo},
+		AuthInfos: map[string]*clientCmdApi.AuthInfo{userIdentifier: authInfo},
 	}
 
 	// write the rendered config snipped when dry-run is enabled
@@ -370,6 +377,7 @@ func init() {
 	AuthCmd.PersistentFlags().StringVarP(&clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
 	AuthCmd.PersistentFlags().StringVarP(&callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
 	AuthCmd.PersistentFlags().StringVarP(&kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config")
+	AuthCmd.PersistentFlags().StringVarP(&kubeUsername, "kube-username", "u", "", "Username identifier in the kube config")
 	AuthCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Toggle config overwrite")
 }
 
