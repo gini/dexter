@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"os/user"
 	"path/filepath"
 	"sync"
 	"syscall"
@@ -26,6 +25,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
 	clientCmdLatest "k8s.io/client-go/tools/clientcmd/api/latest"
+	"k8s.io/client-go/util/homedir"
 )
 
 var (
@@ -359,15 +359,7 @@ func (d *DexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 
 // initialize the command
 func init() {
-	kubeConfigDefaultPath := ""
-
-	// get active user (to get the homedirectory)
-	if usr, err := user.Current(); err != nil {
-		log.Errorf("failed to determine current user: %s", err)
-	} else {
-		// construct the path to the users .kube/config file as a default
-		kubeConfigDefaultPath = filepath.Join(usr.HomeDir, ".kube", "config")
-	}
+	kubeConfigDefaultPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
 	// add the auth command
 	rootCmd.AddCommand(AuthCmd)
