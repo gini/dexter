@@ -32,6 +32,7 @@ var (
 	// default injected at build time. This is optional
 	buildTimeClientID     string
 	buildTimeClientSecret string
+	buildTimeProvider     string
 
 	// commandline flags
 	clientID     string
@@ -48,8 +49,29 @@ var (
 		Long: `Use a provider sub-command to authenticate against your identity provider of choice.
 For details go to: https://blog.gini.net/
 `,
+		RunE: DefaultCommand,
 	}
 )
+
+// support build time providers. If the variable buildTimeProvider is set run the provider.
+// FR: https://github.com/gini/dexter/issues/29
+func DefaultCommand(cmd *cobra.Command, args []string) error {
+	var realCommand func(cmd *cobra.Command, args []string) error
+
+	// simple approach to select the provider
+	switch buildTimeProvider {
+	case "google":
+		realCommand = GoogleCommand
+	case "azure":
+		realCommand = AzureCommand
+	default:
+		// no valid provider found: default to usage
+		return cmd.Usage()
+	}
+
+	log.Infof("Build time provider set to '%s'. Use flag --help for more options.", buildTimeProvider)
+	return realCommand(cmd, args)
+}
 
 // helper type to render the k8s config
 type CustomClaim struct {

@@ -86,7 +86,8 @@ bin/$(ARCH)/$(BIN):
 	    -X $(PKG)/version.GITHASH=$(GIT_HASH) \
 	    -X $(PKG)/version.DOB=$(DOB) \
 	    -X $(PKG)/cmd.buildTimeClientID=$(CLIENT_ID) \
-	    -X $(PKG)/cmd.buildTimeClientSecret=$(CLIENT_SECRET)"
+	    -X $(PKG)/cmd.buildTimeClientSecret=$(CLIENT_SECRET) \
+	    -X $(PKG)/cmd.buildTimeProvider=$(DEFAULT_PROVIDER)"
 
 # Run go vet on repo
 vet:
