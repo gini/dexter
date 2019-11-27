@@ -69,6 +69,14 @@ It is possible to embed your Google credentials into the resulting binary.
 CLIENT_ID=abc123.apps.googleusercontent.com CLIENT_SECRET=mySecret OS=linux make
 ```
 
+You can streamline your user experience even more by also specifying a
+default provider. `dexter auth` will then run the specified provider.
+Valid choices are `google` and `azure`.
+
+```
+DEFAULT_PROVIDER=google make
+```
+
 ## Run dexter
 
 Run `dexter` without a command to access the help screen/intro.
