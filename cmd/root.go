@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 )
 
 var (
-	Verbose bool
+	verbose bool
 
 	rootCmd = &cobra.Command{
 		Use:   "dexter",
@@ -25,18 +26,20 @@ var (
 		Long: fmt.Sprintf(`%s
 dexter is a authentication helper for Kubernetes that does the heavy
 lifting for SSO (Single Sign On) for Kubernetes.`, BANNER),
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if verbose {
+				log.SetLevel(log.DebugLevel)
+			}
+			return nil
+		},
 	}
 )
 
 func init() {
-	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 }
 
 // Execute executes the root command.
 func Execute() error {
-	if Verbose {
-		log.SetLevel(log.DebugLevel)
-	}
-
 	return rootCmd.Execute()
 }

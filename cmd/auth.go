@@ -192,8 +192,13 @@ func (d DexterOIDC) StartHTTPServer() error {
 
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 
-			d.httpServer.Shutdown(ctx)
+			err := d.httpServer.Shutdown(ctx)
 			cancel()
+
+			if err != nil {
+				log.Errorf("HTTP shutdown failed: %s", err)
+			}
+
 			log.Infof("Shutdown completed")
 			return nil
 		// OS signal was received
@@ -355,7 +360,9 @@ func (d *DexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	}
 
 	// write snipped to temporary file
-	clientcmd.WriteToFile(*config, tempKubeConfig.Name())
+	if err := clientcmd.WriteToFile(*config, tempKubeConfig.Name()); err != nil {
+		return fmt.Errorf("failed to write temporary file: %s", err)
+	}
 
 	// setup the order for the file load
 	loadingRules := clientcmd.ClientConfigLoadingRules{
