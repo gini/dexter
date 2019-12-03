@@ -41,6 +41,7 @@ var (
 	kubeConfig   string
 	kubeUsername string
 	dryRun       bool
+	emailFile    string
 
 	// Cobra command
 	AuthCmd = &cobra.Command{
@@ -306,6 +307,14 @@ func (d *DexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 
 	userIdentifier := customClaim.Email
 
+        if emailFile != "" {
+		log.Info(fmt.Sprintf("writing email to %s", emailFile))
+		err := ioutil.WriteFile(emailFile, []byte(userIdentifier+"\n"), 0644)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Error writing email to file: %s", err))
+		}
+	}
+
 	if d.kubeUsername != "" {
 		userIdentifier = d.kubeUsername
 	}
@@ -400,6 +409,7 @@ func init() {
 	AuthCmd.PersistentFlags().StringVarP(&kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config")
 	AuthCmd.PersistentFlags().StringVarP(&kubeUsername, "kube-username", "u", "", "Username identifier in the kube config")
 	AuthCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Toggle config overwrite")
+        AuthCmd.PersistentFlags().StringVarP(&emailFile, "write-email", "f", "", "Write user email to the specified file for use with other tooling")
 }
 
 // initiate the OIDC flow. This func should be called in each cobra command
