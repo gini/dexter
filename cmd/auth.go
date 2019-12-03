@@ -409,7 +409,7 @@ func init() {
 	AuthCmd.PersistentFlags().StringVarP(&kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config")
 	AuthCmd.PersistentFlags().StringVarP(&kubeUsername, "kube-username", "u", "", "Username identifier in the kube config")
 	AuthCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Toggle config overwrite")
-        AuthCmd.PersistentFlags().StringVarP(&emailFile, "write-email", "f", "", "Write user email to the specified file for use with other tooling")
+	AuthCmd.PersistentFlags().StringVarP(&emailFile, "write-email", "f", "", "Write user email to the specified file for use with other tooling")
 }
 
 // initiate the OIDC flow. This func should be called in each cobra command
