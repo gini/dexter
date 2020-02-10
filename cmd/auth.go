@@ -308,7 +308,7 @@ func (d *DexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	userIdentifier := customClaim.Email
 
 	if emailFile != "" {
-		log.Info(fmt.Sprintf("writing email to %s", emailFile))
+		log.Infof("Writing user email to %s", emailFile)
 		err := ioutil.WriteFile(emailFile, []byte(userIdentifier+"\n"), 0644)
 		if err != nil {
 			return errors.New(fmt.Sprintf("Error writing email to file: %s", err))
