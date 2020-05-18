@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/coreos/go-oidc"
 	"github.com/ghodss/yaml"
@@ -179,11 +178,11 @@ func (d DexterOIDC) StartHTTPServer() error {
 
 	http.HandleFunc("/callback", d.callbackHandler)
 
-	go func(d DexterOIDC) {
-		if err := d.httpServer.ListenAndServe(); err != nil {
+	go func(d *DexterOIDC) {
+		if err := d.httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			log.Errorf("Failed to start HTTP server: %s", err)
 		}
-	}(d)
+	}(&d)
 
 	for {
 		select {
@@ -191,10 +190,7 @@ func (d DexterOIDC) StartHTTPServer() error {
 		case <-d.quitChan:
 			log.Debugf("Shutdown signal received. We're done here")
 
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-
-			err := d.httpServer.Shutdown(ctx)
-			cancel()
+			err := d.httpServer.Shutdown(context.Background())
 
 			if err != nil {
 				log.Errorf("HTTP shutdown failed: %s", err)
