@@ -116,6 +116,7 @@ Use a provider sub-command to authenticate against your identity provider of cho
 For details go to: https://blog.gini.net/
 
 Usage:
+  dexter auth [flags]
   dexter auth [command]
 
 Available Commands:
@@ -123,13 +124,15 @@ Available Commands:
   google      Authenticate with the Google Identity Provider
 
 Flags:
-  -c, --callback string        Callback URL. The listen address is dreived from that. (default "http://127.0.0.1:64464/callback")
-  -i, --client-id string       Google clientID (default "REDACTED")
-  -s, --client-secret string   Google clientSecret (default "REDACTED")
-  -d, --dry-run                Toggle config overwrite
-  -h, --help                   help for auth
-  -k, --kube-config string     Overwrite the default location of kube config (default "/Users/dkerwin/.kube/config")
-  -u, --kube-username string   Username identifier in the kube config
+  -c, --callback string               Callback URL. The listen address is dreived from that. (default "http://127.0.0.1:64464/callback")
+  -i, --client-id string              Google clientID (default "REDACTED")
+  -s, --client-secret string          Google clientSecret (default "REDACTED")
+  -d, --dry-run                       Toggle config overwrite
+  -h, --help                          help for auth
+  -k, --kube-config string            Overwrite the default location of kube config (default "/Users/dkerwin/.kube/config")
+  -t, --kube-config-template string   Template to bootstrap a empty kube config from. Must be an open HTTP endpoint serving the raw file
+  -u, --kube-username string          Username identifier in the kube config
+  -f, --write-email string            Write user email to the specified file for use with other tooling
 
 Global Flags:
   -v, --verbose   verbose output

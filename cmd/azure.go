@@ -29,7 +29,7 @@ func (a *AzureOIDC) Autopilot() error {
 		return fmt.Errorf("failed to extract oidc configuration from the kube config: %s", err)
 	}
 
-	// fallback ti tenant common
+	// fallback to tenant common
 	a.tenant = "common"
 
 	// call parent method to initialize client credentials
