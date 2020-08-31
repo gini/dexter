@@ -385,8 +385,10 @@ func (d *DexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 	}
 
 	// create the kube config file if the template was specified
-	if err := d.downloadKubeConfigTemplate(userIdentifier); err != nil {
-		return fmt.Errorf("failed to install the kube config template: %s", err)
+	if d.kubeConfigTemplate != "" {
+		if err := d.downloadKubeConfigTemplate(userIdentifier); err != nil {
+			return fmt.Errorf("failed to install the kube config template: %s", err)
+		}
 	}
 
 	// construct the authinfo struct
