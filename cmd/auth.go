@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/coreos/go-oidc"
 	"github.com/ghodss/yaml"
+	"github.com/gini/dexter/tmpl"
 	"github.com/gini/dexter/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -35,21 +37,21 @@ var (
 	buildTimeProvider     string
 
 	// commandline flags
-	clientID           string
-	clientSecret       string
-	callback           string
-	kubeConfig         string
-	kubeUsername       string
-	dryRun             bool
-	emailFile          string
-	kubeConfigTemplate string
+	clientID     string
+	clientSecret string
+	callback     string
+	kubeConfig   string
+	kubeTemplate bool
+	kubeUsername string
+	dryRun       bool
+	emailFile    string
 
 	// Cobra command
 	AuthCmd = &cobra.Command{
 		Use:   "auth",
 		Short: "Authenticate with OIDC provider",
 		Long: `Use a provider sub-command to authenticate against your identity provider of choice.
-For details go to: https://blog.gini.net/
+For details go to: https://gini.net/en/blog/frictionless-kubernetes-openid-connect-integration/
 `,
 		RunE: DefaultCommand,
 	}
@@ -92,33 +94,26 @@ type OIDCProvider interface {
 // DexterOIDC: struct to store the required data and provide methods to
 // authenticate with OpenID providers
 type DexterOIDC struct {
-	clientID           string         // clientID commandline flag
-	clientSecret       string         // clientSecret commandline flag
-	callback           string         // callback URL commandline flag
-	state              string         // CSRF protection
-	kubeConfig         string         // location of the kube config file
-	kubeUsername       string         // name identifier to store the user data
-	kubeConfigTemplate string         // download location for a initial kube config
-	dryRun             bool           // don't update the kubectl config
-	Oauth2Config       *oauth2.Config // oauth2 configuration
-	k8sMutex           sync.RWMutex   // mutex to prevent simultaneous write to kubectl config
-	httpClient         *http.Client   // http client
-	httpServer         http.Server    // http server
-	quitChan           chan struct{}  // signal for a clean shutdown
-	signalChan         chan os.Signal // react on signals from the outside world
+	clientID     string         // clientID commandline flag
+	clientSecret string         // clientSecret commandline flag
+	callback     string         // callback URL commandline flag
+	state        string         // CSRF protection
+	kubeConfig   string         // location of the kube config file
+	kubeTemplate bool           // render embedded kubectl template
+	kubeUsername string         // name identifier to store the user data
+	dryRun       bool           // don't update the kubectl config
+	Oauth2Config *oauth2.Config // oauth2 configuration
+	k8sMutex     sync.RWMutex   // mutex to prevent simultaneous write to kubectl config
+	httpClient   *http.Client   // http client
+	httpServer   http.Server    // http server
+	quitChan     chan struct{}  // signal for a clean shutdown
+	signalChan   chan os.Signal // react on signals from the outside world
 }
 
 // ensure that the required parameters are defined and that the values make sense
 func (d DexterOIDC) PreflightCheck() error {
 	if d.clientID == "" || d.clientSecret == "" {
 		return errors.New("clientID and clientSecret cannot be empty")
-	}
-
-	// ensure that the kube config doesn't exist when the template is specified
-	if d.kubeConfigTemplate != "" {
-		if _, err := os.Stat(d.kubeConfig); !os.IsNotExist(err) {
-			return fmt.Errorf("kube-config template specified but a configurtation already exists: %s", d.kubeConfig)
-		}
 	}
 
 	return nil
@@ -233,8 +228,8 @@ func (d *DexterOIDC) initialize() {
 	d.clientSecret = clientSecret
 	d.callback = callback
 	d.kubeConfig = kubeConfig
+	d.kubeTemplate = kubeTemplate
 	d.kubeUsername = kubeUsername
-	d.kubeConfigTemplate = kubeConfigTemplate
 	d.dryRun = dryRun
 }
 
@@ -290,31 +285,8 @@ func (d *DexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// download the initial kube config via HTTP
-func (d *DexterOIDC) downloadKubeConfigTemplate(user string) error {
-	// create a new http client with the builtin defaults
-	client := http.Client{}
-	resp, err := client.Get(d.kubeConfigTemplate)
-
-	if err != nil {
-		return fmt.Errorf("http call to '%s' failed: %s", d.kubeConfigTemplate, err)
-	}
-
-	// close the body
-	defer resp.Body.Close()
-
-	// ensure we got a HTTP 200
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch kube config template: HTTP status %d", resp.StatusCode)
-	}
-
-	// read the response body
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return fmt.Errorf("faield to read the response body: %s", err)
-	}
-
+// renderKubeConfigTemplate will render the embedded kube config template
+func (d *DexterOIDC) renderKubeConfigTemplate(user string) error {
 	// write to the new kube config
 	f, err := os.Create(d.kubeConfig)
 
@@ -325,15 +297,15 @@ func (d *DexterOIDC) downloadKubeConfigTemplate(user string) error {
 	// close the FH
 	defer f.Close()
 
-	// create struct to hold user information which will be used in the template
+	// create struct to hold user information which will be used in the tmpl
 	u := struct {
 		User string
 	}{
 		User: user,
 	}
 
-	// Parse the http response body as text template
-	t, err := template.New("net").Parse(string(body))
+	// Parse the http response body as text tmpl
+	t, err := template.New("net").Parse(tmpl.KubeConfigTemplate)
 
 	if err != nil {
 		return fmt.Errorf("failed to parse kube config template: %s", err)
@@ -343,7 +315,7 @@ func (d *DexterOIDC) downloadKubeConfigTemplate(user string) error {
 		return fmt.Errorf("failed to render kube config template: %s", err)
 	}
 
-	log.Infof("Fetched and rendered kube config template from %s", d.kubeConfigTemplate)
+	log.Info("Rendered embedded kube config template")
 
 	return nil
 }
@@ -384,10 +356,13 @@ func (d *DexterOIDC) writeK8sConfig(token *oauth2.Token) error {
 		userIdentifier = d.kubeUsername
 	}
 
-	// create the kube config file if the template was specified
-	if d.kubeConfigTemplate != "" {
-		if err := d.downloadKubeConfigTemplate(userIdentifier); err != nil {
-			return fmt.Errorf("failed to install the kube config template: %s", err)
+	// render embedded template when the commandline flag is set, and we have NO kube config to work with
+	if d.kubeTemplate {
+		// ensure that we have no kubectl config
+		if _, err := os.Stat(d.kubeConfig); os.IsNotExist(err) {
+			if err := d.renderKubeConfigTemplate(userIdentifier); err != nil {
+				return fmt.Errorf("failed to create empty %s: %s", d.kubeConfig, err)
+			}
 		}
 	}
 
@@ -479,10 +454,10 @@ func init() {
 	AuthCmd.PersistentFlags().StringVarP(&clientSecret, "client-secret", "s", "REDACTED", "Google clientSecret")
 	AuthCmd.PersistentFlags().StringVarP(&callback, "callback", "c", "http://127.0.0.1:64464/callback", "Callback URL. The listen address is dreived from that.")
 	AuthCmd.PersistentFlags().StringVarP(&kubeConfig, "kube-config", "k", kubeConfigDefaultPath, "Overwrite the default location of kube config")
+	AuthCmd.PersistentFlags().BoolVarP(&kubeTemplate, "kube-template", "t", true, "Use the embedded template when there is no kubectl configuration")
 	AuthCmd.PersistentFlags().StringVarP(&kubeUsername, "kube-username", "u", "", "Username identifier in the kube config")
 	AuthCmd.PersistentFlags().BoolVarP(&dryRun, "dry-run", "d", false, "Toggle config overwrite")
 	AuthCmd.PersistentFlags().StringVarP(&emailFile, "write-email", "f", "", "Write user email to the specified file for use with other tooling")
-	AuthCmd.PersistentFlags().StringVarP(&kubeConfigTemplate, "kube-config-template", "t", "", "Template to bootstrap a empty kube config from. Must be an open HTTP endpoint serving the raw file")
 }
 
 // initiate the OIDC flow. This func should be called in each cobra command
