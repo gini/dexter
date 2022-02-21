@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
+
 	"github.com/gini/dexter/version"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -13,8 +14,8 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Printf(`%s
 Version    : %s
-Git Hash   : %s
-Birth Date : %s`, BANNER, version.VERSION, version.GITHASH, version.DOB)
+Git Commit : %s
+Build Time : %s`, BANNER, version.VERSION, version.GITHASH, version.DOB)
 			fmt.Println()
 		},
 	}

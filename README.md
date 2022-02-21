@@ -1,7 +1,5 @@
 # dexter
 
-[![Build Status](https://travis-ci.org/gini/dexter.svg?branch=master)](https://travis-ci.org/gini/dexter)
-
 `dexter` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google or Azure as Identity Provider.
 All you need is a properly configured Google or Azure client ID & secret.
 
@@ -50,39 +48,101 @@ writing.
 
 ## Installation
 
-You can download a prebuilt version from the [Github release section](https://github.com/gini/dexter/releases) or build it yourself:
+You can download a prebuilt version from the [Github release section](https://github.com/gini/dexter/releases) or build it yourself.
+The easiest way to get everything set up correctly (e.g. ldflags) is to use [goreleaser](https://goreleaser.com).
 
 ```
-go get -u github.com/gini/dexter
-cd $GOPATH/src/github.com/gini/dexter
-
-# Linux
-OS=linux make
-
-# MacOS
-OS=darwin make
+# cd DEXTER_SOURCE
+# goreleaser release --snapshot --rm-dist
+• releasing...
+• loading config file       file=.goreleaser.yml
+• loading environment variables
+• getting and validating git state
+   • building...               commit=377677a03da17461acf7775519518fb3336e6753 latest tag=v0.4.1
+   • pipe skipped              error=disabled during snapshot mode
+• parsing tag
+• running before hooks
+   • running                   hook=go mod tidy
+• setting defaults
+• snapshotting
+   • building snapshot...      version=0.4.2-next
+• checking distribution directory
+   • --rm-dist is set, cleaning it up
+• loading go mod information
+• build prerequisites
+• writing effective config file
+   • writing                   config=dist/config.yaml
+• building binaries
+   • building                  binary=dist/dexter_darwin_arm64/dexter
+   • building                  binary=dist/dexter_darwin_amd64/dexter
+   • building                  binary=dist/dexter_linux_amd64/dexter
+• universal binaries
+   • creating from 2 binaries  binary=dist/dexter_darwin_all/dexter
+• archives
+   • creating                  archive=dist/dexter_0.4.2-next_Linux_x86_64.tar.gz
+   • creating                  archive=dist/dexter_0.4.2-next_Darwin_all.tar.gz
+• calculating checksums
+• storing release metadata
+   • writing                   file=dist/artifacts.json
+   • writing                   file=dist/metadata.json
+• release succeeded after 8.18s
 ```
 
-It is possible to embed your Google credentials into the resulting binary.
+Check `./dist` for the build that matches your platform.
+
+### Embed credentials and template
+
+You can also customize the build and embed client credentails and a default kubectl config into the binary. Again, using `goreleaser` for the build is the easiest approach.
+Client credentials are embedded automatically when you set two environment variables.
 
 ```
-CLIENT_ID=abc123.apps.googleusercontent.com CLIENT_SECRET=mySecret OS=linux make
+CLIENT_ID=abc123.apps.googleusercontent.com
+CLIENT_SECRET=mySecret
 ```
 
-You can streamline your user experience even more by also specifying a
-default provider. `dexter auth` will then run the specified provider.
+You can streamline your user experience even more by also specifying a default provider. `dexter auth` will then run the specified provider.
 Valid choices are `google` and `azure`.
 
 ```
-DEFAULT_PROVIDER=google make
+DEFAULT_PROVIDER=google
 ```
+
+If you want to to change the default config template that is deployed when there is no config on the system you have to replace the contents of `./tmpl/kube-config.yaml` with your valid kubectl configuration.
+This can come in handy if you want to pre-populate clusters and certificates.
+
+```
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: XXX
+    server: https://stage.cluster:6443
+  name: stage
+- cluster:
+    certificate-authority-data: YYY
+    server: https://production.cluster:6443
+  name: production
+contexts:
+- context:
+    cluster: stage
+    user: {{ .User }}
+  name: stage
+- context:
+    cluster: production
+    user: {{ .User }}
+  name: production
+current-context: stage
+kind: Config
+preferences: {}
+```
+
+Please make sure that you have `{{ .User }}` in all contexts that need you want to enrich with the OIDC account you are about to configure.
 
 ## Run dexter
 
 Run `dexter` without a command to access the help screen/intro.
 
 ```
-❯ ./build/dexter_darwin_amd64
+❯ ./dexter
     .___               __
   __| _/____ ___  ____/  |_  ___________
  / __ |/ __ \\  \/  /\   __\/ __ \_  __ \
@@ -111,9 +171,9 @@ Use "dexter [command] --help" for more information about a command.
 Running `dexter auth [Idp]` will start the authentication process.
 
 ```
- ❯ ./build/dexter_darwin_amd64 auth --help
+ ❯ ./dexter auth --help
 Use a provider sub-command to authenticate against your identity provider of choice.
-For details go to: https://blog.gini.net/
+For details go to: https://gini.net/en/blog/frictionless-kubernetes-openid-connect-integration/
 
 Usage:
   dexter auth [flags]
@@ -124,15 +184,15 @@ Available Commands:
   google      Authenticate with the Google Identity Provider
 
 Flags:
-  -c, --callback string               Callback URL. The listen address is dreived from that. (default "http://127.0.0.1:64464/callback")
-  -i, --client-id string              Google clientID (default "REDACTED")
-  -s, --client-secret string          Google clientSecret (default "REDACTED")
-  -d, --dry-run                       Toggle config overwrite
-  -h, --help                          help for auth
-  -k, --kube-config string            Overwrite the default location of kube config (default "/Users/dkerwin/.kube/config")
-  -t, --kube-config-template string   Template to bootstrap a empty kube config from. Must be an open HTTP endpoint serving the raw file
-  -u, --kube-username string          Username identifier in the kube config
-  -f, --write-email string            Write user email to the specified file for use with other tooling
+  -c, --callback string        Callback URL. The listen address is dreived from that. (default "http://127.0.0.1:64464/callback")
+  -i, --client-id string       Google clientID (default "REDACTED")
+  -s, --client-secret string   Google clientSecret (default "REDACTED")
+  -d, --dry-run                Toggle config overwrite
+  -h, --help                   help for auth
+  -k, --kube-config string     Overwrite the default location of kube config (default "/Users/dkerwin/.kube/config")
+  -t, --kube-template          Use the embedded template when there is no kubectl configuration (default true)
+  -u, --kube-username string   Username identifier in the kube config
+  -f, --write-email string     Write user email to the specified file for use with other tooling
 
 Global Flags:
   -v, --verbose   verbose output
