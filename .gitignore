@@ -1,3 +1,6 @@
 build/
 .idea/
 dist/
+# This is required to allow goreleaser to release with different templates.
+# The actual config has to be copied to the location in a prep step.
+tmpl/kube-config.yaml
