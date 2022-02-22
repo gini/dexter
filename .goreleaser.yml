@@ -12,9 +12,9 @@ builds:
       - -X github.com/gini/dexter/version.VERSION={{.Version}}
       - -X github.com/gini/dexter/version.GITHASH={{.Commit}}
       - -X github.com/gini/dexter/version.DOB={{.Date}}
-      - -X cmd.buildTimeClientID={{ if index .Env "CLIENT_ID" }}{{ .Env.CLIENT_ID }}{{ else }}""{{ end }}
-      - -X cmd.buildTimeClientSecret={{ if index .Env "CLIENT_SECRET" }}{{ .Env.CLIENT_SECRET }}{{ else }}""{{ end }}
-      - -X cmd.buildTimeProvider={{ if index .Env "DEFAULT_PROVIDER" }}{{ .Env.DEFAULT_PROVIDER }}{{ else }}""{{ end }}
+      - -X github.com/gini/dexter/cmd.buildTimeClientID={{ if index .Env "CLIENT_ID" }}{{ .Env.CLIENT_ID }}{{ else }}""{{ end }}
+      - -X github.com/gini/dexter/cmd.buildTimeClientSecret={{ if index .Env "CLIENT_SECRET" }}{{ .Env.CLIENT_SECRET }}{{ else }}""{{ end }}
+      - -X github.com/gini/dexter/cmd.buildTimeProvider={{ if index .Env "DEFAULT_PROVIDER" }}{{ .Env.DEFAULT_PROVIDER }}{{ else }}""{{ end }}
     goos:
       - linux
       - darwin
@@ -42,3 +42,4 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+
