@@ -18,9 +18,6 @@ jobs:
         with:
           go-version: 1.17
 
-      - name: Copy default kube config
-        run: cp assets/kube-config.yaml tmpl/kube-config.yaml
-
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:

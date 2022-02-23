@@ -4,6 +4,7 @@ before:
   hooks:
     # You may remove this if you don't use go modules.
     - go mod tidy
+    - sh -c "if [[ ! -f tmpl/kube-config.yaml ]]; then cp assets/kube-config.yaml tmpl/; fi"
 builds:
   - env:
       - CGO_ENABLED=0
