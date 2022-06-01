@@ -1,47 +1,46 @@
 module github.com/gini/dexter
 
 require (
-	github.com/coreos/go-oidc v2.0.0+incompatible
+	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/ghodss/yaml v1.0.0
-	github.com/sirupsen/logrus v1.2.0
-	github.com/spf13/cobra v0.0.3
-	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
-	gopkg.in/square/go-jose.v2 v2.3.0
-	k8s.io/apimachinery v0.23.4
-	k8s.io/client-go v0.23.4
+	github.com/sirupsen/logrus v1.8.1
+	github.com/spf13/cobra v1.4.0
+	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401
+	gopkg.in/square/go-jose.v2 v2.6.0
+	k8s.io/apimachinery v0.24.1
+	k8s.io/client-go v0.24.1
 )
 
 require (
-	cloud.google.com/go v0.81.0 // indirect
+	cloud.google.com/go/compute v1.6.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/go-logr/logr v1.2.0 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.5 // indirect
-	github.com/google/gofuzz v1.1.0 // indirect
-	github.com/imdario/mergo v0.3.7 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
+	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
-	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
-	golang.org/x/sys v0.0.0-20210831042530-f4d43177bf5e // indirect
-	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b // indirect
+	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
+	golang.org/x/net v0.0.0-20220531201128-c960675eff93 // indirect
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
+	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/klog/v2 v2.30.0 // indirect
-	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
-	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
+	k8s.io/klog/v2 v2.60.1 // indirect
+	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
+	sigs.k8s.io/json v0.0.0-20220525155127-227cbc7cc124 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
-	sigs.k8s.io/yaml v1.2.0 // indirect
+	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
 go 1.17
