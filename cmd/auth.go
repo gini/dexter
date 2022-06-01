@@ -235,6 +235,8 @@ func (d *DexterOIDC) initialize() {
 
 // accept callbacks from your browser
 func (d *DexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
+	defer func() { d.quitChan <- struct{}{} }()
+
 	log.Info("callback received")
 
 	// Get code and state from the passed form value
@@ -276,9 +278,6 @@ func (d *DexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// We're done here
-	d.quitChan <- struct{}{}
-
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("<html><body>Authentication completed. It's safe to close this window now ;-)</body></html>"))
 
@@ -287,6 +286,16 @@ func (d *DexterOIDC) callbackHandler(w http.ResponseWriter, r *http.Request) {
 
 // renderKubeConfigTemplate will render the embedded kube config template
 func (d *DexterOIDC) renderKubeConfigTemplate(user string) error {
+	// ensure that the directory structure for kube config exists
+	baseDir := filepath.Dir(d.kubeConfig)
+
+	_, err := os.Stat(baseDir)
+	if err != nil && os.IsNotExist(err) {
+		if err := os.MkdirAll(baseDir, 0750); err != nil {
+			return fmt.Errorf("failed to create %s: %s", baseDir, err)
+		}
+	}
+
 	// write to the new kube config
 	f, err := os.Create(d.kubeConfig)
 
