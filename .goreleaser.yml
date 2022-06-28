@@ -4,7 +4,7 @@ before:
   hooks:
     # You may remove this if you don't use go modules.
     - go mod tidy
-    - sh -c "pwd; ls -l tmpl/kube-config.yaml; if [[ ! -f tmpl/kube-config.yaml ]]; then cp -v assets/kube-config.yaml tmpl/kube-config.yaml; fi"
+    - sh -c "pwd; ls -l tmpl/kube-config.yaml; if [ ! -f tmpl/kube-config.yaml ]; then cp -v assets/kube-config.yaml tmpl/kube-config.yaml; fi"
 builds:
   - env:
       - CGO_ENABLED=0
