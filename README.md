@@ -162,8 +162,9 @@ Available Commands:
   version     Print the version number of dexter
 
 Flags:
-  -h, --help      help for dexter
-  -v, --verbose   verbose output
+  -h, --help          help for dexter
+      --timeout int   Timeout for HTTP requests to OIDC providers (default 2)
+  -v, --verbose       verbose output
 
 Use "dexter [command] --help" for more information about a command.
 ```

@@ -19,6 +19,7 @@ const (
 
 var (
 	verbose bool
+	timeout int
 
 	rootCmd = &cobra.Command{
 		Use:   "dexter",
@@ -37,6 +38,7 @@ lifting for SSO (Single Sign On) for Kubernetes.`, BANNER),
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 2, "Timeout for HTTP requests to OIDC providers")
 }
 
 // Execute executes the root command.
