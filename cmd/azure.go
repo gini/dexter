@@ -72,7 +72,7 @@ var (
 	azureProvider = &AzureOIDC{
 		DexterOIDC{
 			Oauth2Config: &oauth2.Config{},
-			httpClient:   &http.Client{Timeout: 2 * time.Second},
+			httpClient:   &http.Client{},
 			quitChan:     make(chan struct{}),
 			signalChan:   make(chan os.Signal, 1),
 		},
@@ -113,6 +113,7 @@ func init() {
 
 func AzureCommand(cmd *cobra.Command, args []string) error {
 	azureProvider.initialize()
+	azureProvider.httpClient.Timeout = time.Duration(timeout) * time.Second
 
 	azureProvider.Oauth2Config.Endpoint = microsoft.AzureADEndpoint(azureProvider.tenant)
 	azureProvider.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, "email"}

@@ -20,7 +20,7 @@ var (
 	googleProvider = &GoogleOIDC{
 		DexterOIDC{
 			Oauth2Config: &oauth2.Config{},
-			httpClient:   &http.Client{Timeout: 2 * time.Second},
+			httpClient:   &http.Client{},
 			quitChan:     make(chan struct{}),
 			signalChan:   make(chan os.Signal, 1),
 		},
@@ -57,6 +57,7 @@ func init() {
 
 func GoogleCommand(cmd *cobra.Command, args []string) error {
 	googleProvider.initialize()
+	googleProvider.httpClient.Timeout = time.Duration(timeout) * time.Second
 
 	googleProvider.Oauth2Config.Endpoint = google.Endpoint
 	googleProvider.Oauth2Config.Scopes = []string{oidc.ScopeOpenID, "profile", "email"}
