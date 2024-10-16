@@ -3,27 +3,34 @@ name: Release
 on:
   push:
     tags:
-      - '*'
+      - '[0-9]+.[0-9]+.[0-9]+'
+    branches:
+      - master
+
+permissions:
+  contents: write
 
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      -
+        name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v2
+      -
+        name: Set up Go
+        uses: actions/setup-go@v5
         with:
           go-version: 1.23.2
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
+      -
+        name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
-          args: release --rm-dist
+          version: 'latest'
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
