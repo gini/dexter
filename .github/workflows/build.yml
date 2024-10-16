@@ -31,6 +31,7 @@ jobs:
           version: 'latest'
           # --snapshot's goal is to ignore the existing tagging.
           # We are just veryfying this builds, we don't intend to release in this step.
-          args: build --clean --snapshot
+          # validate refers to git tags - we don't need to check semver at this stage yet.
+          args: build --clean --snapshot --skip validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
