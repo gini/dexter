@@ -53,7 +53,7 @@ The easiest way to get everything set up correctly (e.g. ldflags) is to use [gor
 
 ```
 # cd DEXTER_SOURCE
-# goreleaser release --snapshot --rm-dist
+# goreleaser release --snapshot --clean
 • releasing...
 • loading config file       file=.goreleaser.yml
 • loading environment variables
@@ -216,7 +216,7 @@ It's awesome that you consider contributing to `dexter` and it's really simple. 
 Initial code was written by [Daniel Kerwin](mailto:daniel@gini.net) & David González Ruiz
 
 Contributors (in alphabetical order):
--   https://github.com/andrewsav-datacom
+-   https://github.com/andrewsav-bt
 -   https://github.com/cblims
 -   https://github.com/Lujeni
 -   https://github.com/pussinboots
