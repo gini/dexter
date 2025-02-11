@@ -8,7 +8,7 @@ require (
 	golang.org/x/oauth2 v0.26.0
 	gopkg.in/square/go-jose.v2 v2.6.0
 	k8s.io/apimachinery v0.32.1
-	k8s.io/client-go v0.32.0
+	k8s.io/client-go v0.32.1
 )
 
 require (
