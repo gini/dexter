@@ -1,3 +1,9 @@
+# ARCHIVE NOTICE
+
+As of 2025-05-15, this repo is no longer actively maintained.
+
+If you are looking for a similar tool to help you manage OIDC within your kubeconfig, here's one solution you can explore: https://github.com/int128/kubelogin
+
 # dexter
 
 `dexter` is a OIDC (OpenId Connect) helper to create a hassle-free Kubernetes login experience powered by Google or Azure as Identity Provider.
